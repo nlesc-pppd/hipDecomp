@@ -11,7 +11,7 @@ endif()
 option(HIPDECOMP_BUILD_FORTRAN "Build Fortran bindings" ON)
 #option(HIPDECOMP_ENABLE_NVTX "Enable NVTX ranges" ON)
 #option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
-#option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
+option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
 #set(HIPDECOMP_NCCL_HOME CACHE STRING "Path to search for NCCL installation. Use to override NVHPC provided NCCL version.")
 #set(HIPDECOMP_NVSHMEM_HOME CACHE STRING "Path to search for NVSHMEM installation. Use to override NVHPC provided NVSHMEM version.")
 
@@ -88,11 +88,14 @@ find_package(MPI REQUIRED)
 # endif()
 
 # Get RCCL library
-find_package(RCCL REQUIRED)
+find_package(rccl REQUIRED)
+
+# Get hipTensor library
+find_package(hiptensor REQUIRED)
 
 if (HIPDECOMP_ENABLE_ROCSHMEM)
   # Get ROCSHMEM library
-  find_package(ROCSHMEM REQUIRED)
+  find_package(rocshmem REQUIRED)
 endif()
 
 # Building HIPDECOMP shared lib
@@ -225,12 +228,12 @@ install(
 #    install(FILES ${CMAKE_BINARY_DIR}/include/hipdecomp.mod DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 # endif()
 
-# if (HIPDECOMP_BUILD_EXTRAS)
-#   add_subdirectory(benchmark)
+if (HIPDECOMP_BUILD_EXTRAS)
+  # add_subdirectory(benchmark)
 
-#   add_subdirectory(tests/cc)
-#   add_subdirectory(examples/cc/basic_usage)
-#   add_subdirectory(examples/cc/taylor_green)
+  add_subdirectory(tests/cc)
+  # add_subdirectory(examples/cc/basic_usage)
+  # add_subdirectory(examples/cc/taylor_green)
 
 #   if (HIPDECOMP_BUILD_FORTRAN)
 #     add_subdirectory(tests/fortran)
@@ -238,4 +241,4 @@ install(
 #     add_subdirectory(examples/fortran/poisson)
 #     add_subdirectory(examples/fortran/taylor_green)
 #   endif()
-# endif()
+endif()
