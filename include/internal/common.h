@@ -70,7 +70,7 @@ struct cudecompHandle {
 
   std::vector<hipStream_t> streams; // internal streams for concurrent scheduling
 
-  hiptensorHandle_t cutensor_handle; // cuTENSOR handle;
+  hiptensorHandle_t cutensor_handle;            // cuTENSOR handle;
   hiptensorPlanPreference_t cutensor_plan_pref; // cuTENSOR plan preference;
 
   std::vector<std::array<char, MPI_MAX_PROCESSOR_NAME>> hostnames; // list of hostnames by rank

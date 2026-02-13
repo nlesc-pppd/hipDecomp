@@ -52,10 +52,8 @@ template <typename T> struct cudecompBatchedD2DMemcpy3DParams {
 
 void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<float>& params, hipStream_t stream);
 void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<double>& params, hipStream_t stream);
-void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<std::complex<float>>& params,
-                                    hipStream_t stream);
-void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<std::complex<double>>& params,
-                                    hipStream_t stream);
+void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<std::complex<float>>& params, hipStream_t stream);
+void cudecomp_batched_d2d_memcpy_3d(cudecompBatchedD2DMemcpy3DParams<std::complex<double>>& params, hipStream_t stream);
 
 } // namespace cudecomp
 

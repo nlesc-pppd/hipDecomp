@@ -215,8 +215,7 @@ static void getCudecompEnvVars(cudecompHandle_t& handle) {
 
   // Check CUDECOMP_ENABLE_CUDA_GRAPHS (CUDA Graphs usage in pipelined backends)
   handle->cuda_graphs_enable = checkEnvVar("CUDECOMP_ENABLE_CUDA_GRAPHS");
-  if (handle->cuda_graphs_enable) {
-  }
+  if (handle->cuda_graphs_enable) {}
 
   // Check CUDECOMP_ENABLE_PERFORMANCE_REPORT (Performance reporting)
   handle->performance_report_enable = checkEnvVar("CUDECOMP_ENABLE_PERFORMANCE_REPORT");
@@ -1189,8 +1188,8 @@ cudecompResult_t cudecompTransposeXToY(cudecompHandle_t handle, cudecompGridDesc
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompTransposeXToY(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
                             reinterpret_cast<std::complex<double>*>(output),
-                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents,
-                            output_halo_extents, input_padding, output_padding, stream);
+                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents, output_halo_extents,
+                            input_padding, output_padding, stream);
       break;
     }
   } catch (const cudecomp::BaseException& e) {
@@ -1232,8 +1231,8 @@ cudecompResult_t cudecompTransposeYToZ(cudecompHandle_t handle, cudecompGridDesc
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompTransposeYToZ(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
                             reinterpret_cast<std::complex<double>*>(output),
-                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents,
-                            output_halo_extents, input_padding, output_padding, stream);
+                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents, output_halo_extents,
+                            input_padding, output_padding, stream);
       break;
     }
   } catch (const cudecomp::BaseException& e) {
@@ -1275,8 +1274,8 @@ cudecompResult_t cudecompTransposeZToY(cudecompHandle_t handle, cudecompGridDesc
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompTransposeZToY(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
                             reinterpret_cast<std::complex<double>*>(output),
-                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents,
-                            output_halo_extents, input_padding, output_padding, stream);
+                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents, output_halo_extents,
+                            input_padding, output_padding, stream);
       break;
     }
   } catch (const cudecomp::BaseException& e) {
@@ -1318,8 +1317,8 @@ cudecompResult_t cudecompTransposeYToX(cudecompHandle_t handle, cudecompGridDesc
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompTransposeYToX(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
                             reinterpret_cast<std::complex<double>*>(output),
-                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents,
-                            output_halo_extents, input_padding, output_padding, stream);
+                            reinterpret_cast<std::complex<double>*>(work), input_halo_extents, output_halo_extents,
+                            input_padding, output_padding, stream);
       break;
     }
   } catch (const cudecomp::BaseException& e) {
@@ -1363,8 +1362,8 @@ cudecompResult_t cudecompUpdateHalosX(cudecompHandle_t handle, cudecompGridDesc_
       break;
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompUpdateHalosX(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
-                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim,
-                           padding, stream);
+                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim, padding,
+                           stream);
       break;
     }
 
@@ -1409,8 +1408,8 @@ cudecompResult_t cudecompUpdateHalosY(cudecompHandle_t handle, cudecompGridDesc_
       break;
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompUpdateHalosY(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
-                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim,
-                           padding, stream);
+                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim, padding,
+                           stream);
       break;
     }
 
@@ -1455,8 +1454,8 @@ cudecompResult_t cudecompUpdateHalosZ(cudecompHandle_t handle, cudecompGridDesc_
       break;
     case CUDECOMP_DOUBLE_COMPLEX:
       cudecompUpdateHalosZ(handle, grid_desc, reinterpret_cast<std::complex<double>*>(input),
-                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim,
-                           padding, stream);
+                           reinterpret_cast<std::complex<double>*>(work), halo_extents, halo_periods, dim, padding,
+                           stream);
       break;
     }
 
