@@ -6,12 +6,16 @@ on:
 
 jobs:
   test-build:
+    name: "Build"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: loostrum/rocm-installer@v0.2
         with:
           version: "7.2.0"
+          packages: rocm-hip-runtime-dev hipfft-dev hiptensor-dev rccl-dev
       - run: |
-          cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1
+          sudo apt update && sudo apt install -y libopenmpi-dev
+      - run: |
+          cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_HIP_ARCH_LIST=gfx90a
           make -C build -j
