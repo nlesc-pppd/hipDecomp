@@ -70,7 +70,7 @@ struct cudecompHandle {
 
   std::vector<hipStream_t> streams; // internal streams for concurrent scheduling
 
-  hiptensorHandle_t cutensor_handle;            // cuTENSOR handle;
+  hiptensorHandle_t cutensor_handle; // cuTENSOR handle;
 #if HIPTENSOR_MAJOR_VERSION >= 2
   hiptensorPlanPreference_t cutensor_plan_pref; // cuTENSOR plan preference;
 #else
