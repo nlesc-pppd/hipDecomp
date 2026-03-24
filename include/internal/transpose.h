@@ -430,9 +430,13 @@ static void cudecompTranspose_(int ax, int dir, const cudecompHandle_t handle, c
             localPermute(handle, extents, order, strides_in, strides_out, src, dst, graph_stream);
             hipStreamCaptureStatus capture_status;
             CHECK_CUDA(hipStreamIsCapturing(graph_stream, &capture_status));
+#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
             CHECK_CUDA(hipEventRecordWithFlags(grid_desc->events[dst_rank], graph_stream,
                                                capture_status == hipStreamCaptureStatusActive ? hipEventRecordExternal
                                                                                               : hipEventRecordDefault));
+#else
+            CHECK_CUDA(hipEventRecord(grid_desc->events[dst_rank], graph_stream));
+#endif
           }
 
           if (handle->cuda_graphs_enable && splits_a.size() > 1) {
@@ -519,9 +523,13 @@ static void cudecompTranspose_(int ax, int dir, const cudecompHandle_t handle, c
           if (pipelined) {
             hipStreamCaptureStatus capture_status;
             CHECK_CUDA(hipStreamIsCapturing(graph_stream, &capture_status));
+#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
             CHECK_CUDA(hipEventRecordWithFlags(grid_desc->events[dst_rank], graph_stream,
                                                capture_status == hipStreamCaptureStatusActive ? hipEventRecordExternal
                                                                                               : hipEventRecordDefault));
+#else
+            CHECK_CUDA(hipEventRecord(grid_desc->events[dst_rank], graph_stream));
+#endif
           }
         }
         if (handle->cuda_graphs_enable && pipelined && splits_a.size() > 1) {
