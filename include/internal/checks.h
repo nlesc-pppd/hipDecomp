@@ -81,9 +81,7 @@
   do {                                                                                                                 \
     ncclResult_t err = call;                                                                                           \
     if (ncclSuccess != err) {                                                                                          \
-      std::ostringstream os;                                                                                           \
-      os << "error code " << err;                                                                                      \
-      throw cudecomp::NcclError(__FILE__, __LINE__, os.str().c_str());                                                 \
+      throw cudecomp::NcclError(__FILE__, __LINE__, ncclGetErrorString(err));                                          \
     }                                                                                                                  \
   } while (false)
 
