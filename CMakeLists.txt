@@ -12,8 +12,6 @@ option(HIPDECOMP_BUILD_FORTRAN "Build Fortran bindings" ON)
 #option(HIPDECOMP_ENABLE_NVTX "Enable NVTX ranges" ON)
 #option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
 option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
-#set(HIPDECOMP_NCCL_HOME CACHE STRING "Path to search for NCCL installation. Use to override NVHPC provided NCCL version.")
-#set(HIPDECOMP_NVSHMEM_HOME CACHE STRING "Path to search for NVSHMEM installation. Use to override NVHPC provided NVSHMEM version.")
 
 # Use AMD Clang compilers by default
 find_program(CMAKE_CXX_COMPILER "amdclang++" REQUIRED)
