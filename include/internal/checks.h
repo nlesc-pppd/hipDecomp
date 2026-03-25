@@ -80,9 +80,7 @@
 #define CHECK_NCCL(call)                                                                                               \
   do {                                                                                                                 \
     ncclResult_t err = call;                                                                                           \
-    if (ncclSuccess != err) {                                                                                          \
-      throw cudecomp::NcclError(__FILE__, __LINE__, ncclGetErrorString(err));                                          \
-    }                                                                                                                  \
+    if (ncclSuccess != err) { throw cudecomp::NcclError(__FILE__, __LINE__, ncclGetErrorString(err)); }                \
   } while (false)
 
 #define CHECK_MPI(call)                                                                                                \
