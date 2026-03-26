@@ -6,7 +6,7 @@ on:
 
 env:
   rocm-version: "7.2.0"
-  ompi-version: "5.0.10"
+  openmpi-version: "5.0.10"
 
 jobs:
   test-build:
@@ -22,7 +22,7 @@ jobs:
           path: |
             /opt/rocm/
             /opt/rocm-${{ env.rocm-version }}/
-        key: ${{ runner.os }}-${{ env.rocm-version }}
+          key: ${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
         id: cache-openmpi
@@ -30,24 +30,30 @@ jobs:
         with:
           path: |
             /opt/openmpi/
-        key: ${{ runner.os }}-${{ env.openmpi-version }}
+          key: ${{ runner.os }}-${{ env.openmpi-version }}
 
       - name: Install ROCm
         if: steps.cache-rocm.outputs.cache-hit != 'true'
         uses: loostrum/rocm-installer@v0.2
         with:
-          version: ${{ env.rocm_version }}
+          version: ${{ env.rocm-version }}
           packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev hipfort-dev hiptensor-dev rccl-dev
 
       - name: Install OpenMPI
         if: steps.cache-openmpi.outputs.cache-hit != 'true'
         run: |
-          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${{ env.ompi-version }}.tar.gz
-          tar xzvf openmpi-${{ env.ompi-version }}.tar.gz
-          cd openmpi-${{ env.ompi-version }}
+          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${{ env.openmpi-version }}.tar.gz
+          tar xzvf openmpi-${{ env.openmpi-version }}.tar.gz
+          cd openmpi-${{ env.openmpi-version }}
           CC=amdclang CXX=amdclang++ FC=amdflang ./configure --prefix=/opt/openmpi/ --with-rocm
           make -j
           sudo make install
+
+      # Always sets path, cache restore does not do this for ROCm
+      - name: Setup PATH
+        run: |
+          echo /opt/openmpi/bin >> $GITHUB_PATH
+          echo /opt/rocm/bin >> $GITHUB_PATH
 
       - name: Build hipDecomp
         run: |
