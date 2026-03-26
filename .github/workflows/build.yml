@@ -13,14 +13,13 @@ jobs:
     name: "Build"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Cache ROCm installation
         id: cache-rocm
         uses: actions/cache@v5
         with:
           path: |
-            /opt/rocm/
             /opt/rocm-${{ env.rocm-version }}/
           key: ${{ runner.os }}-${{ env.rocm-version }}
 
@@ -30,7 +29,13 @@ jobs:
         with:
           path: |
             /opt/openmpi/
-          key: ${{ runner.os }}-${{ env.openmpi-version }}
+          key: ${{ runner.os }}-${{ env.openmpi-version }}-${{ env.rocm-version }}
+
+      # Always sets path, cache restore does not do this for ROCm
+      - name: Setup PATH
+        run: |
+          echo /opt/openmpi/bin >> $GITHUB_PATH
+          echo /opt/rocm-${{ env.rocm-version }}/bin >> $GITHUB_PATH
 
       - name: Install ROCm
         if: steps.cache-rocm.outputs.cache-hit != 'true'
@@ -43,17 +48,11 @@ jobs:
         if: steps.cache-openmpi.outputs.cache-hit != 'true'
         run: |
           wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-${{ env.openmpi-version }}.tar.gz
-          tar xzvf openmpi-${{ env.openmpi-version }}.tar.gz
-          cd openmpi-${{ env.openmpi-version }}
+          tar xzf openmpi-${{ env.openmpi-version }}.tar.gz
+          cd openmpi-${{ env.openmpi-version}}
           CC=amdclang CXX=amdclang++ FC=amdflang ./configure --prefix=/opt/openmpi/ --with-rocm
           make -j
           sudo make install
-
-      # Always sets path, cache restore does not do this for ROCm
-      - name: Setup PATH
-        run: |
-          echo /opt/openmpi/bin >> $GITHUB_PATH
-          echo /opt/rocm/bin >> $GITHUB_PATH
 
       - name: Build hipDecomp
         run: |
