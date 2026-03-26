@@ -15,7 +15,12 @@ jobs:
           version: "7.2.0"
           packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev hipfort-dev hiptensor-dev rccl-dev
       - run: |
-          sudo apt update && sudo apt install -y libopenmpi-dev
+          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.10.tar.gz
+          tar xzvf openmpi-5.0.10.tar.gz
+          cd openmpi-5.0.10
+          CC=amdclang CXX=amdclang++ FC=amdflang ./configure --prefix=/usr/local/ --with-rocm
+          make -j
+          sudo make install
       - run: |
           cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_HIP_ARCH_LIST=gfx90a
           make -C build -j
