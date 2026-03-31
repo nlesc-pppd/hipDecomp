@@ -52,7 +52,7 @@
   do {                                                                                                                 \
     hipError_t err = call;                                                                                             \
     if (hipSuccess != err) {                                                                                           \
-      fprintf(stderr, "%s:%d HIP error. (%s)\n", __FILE__, __LINE__, hipGetErrorString(err));                         \
+      fprintf(stderr, "%s:%d HIP error. (%s)\n", __FILE__, __LINE__, hipGetErrorString(err));                          \
       exit(EXIT_FAILURE);                                                                                              \
     }                                                                                                                  \
   } while (false)
@@ -61,7 +61,7 @@
   do {                                                                                                                 \
     hipError_t err = hipGetLastError();                                                                                \
     if (hipSuccess != err) {                                                                                           \
-      fprintf(stderr, "%s:%d HIP error. (%s)\n", __FILE__, __LINE__, hipGetErrorString(err));                         \
+      fprintf(stderr, "%s:%d HIP error. (%s)\n", __FILE__, __LINE__, hipGetErrorString(err));                          \
       exit(EXIT_FAILURE);                                                                                              \
     }                                                                                                                  \
   } while (false)
@@ -86,7 +86,7 @@
   do {                                                                                                                 \
     hipfftResult_t err = call;                                                                                         \
     if (HIPFFT_SUCCESS != err) {                                                                                       \
-      fprintf(stderr, "%s:%d HIPFFT error. (error code %d)\n", __FILE__, __LINE__, err);                                \
+      fprintf(stderr, "%s:%d HIPFFT error. (error code %d)\n", __FILE__, __LINE__, err);                               \
       exit(EXIT_FAILURE);                                                                                              \
     }                                                                                                                  \
   } while (false)

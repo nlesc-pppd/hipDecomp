@@ -86,15 +86,15 @@ typedef enum {
  * will return one of these values to indicate if an operation has completed successfully or an error occured.
  */
 typedef enum {
-  HIPDECOMP_RESULT_SUCCESS = 0,        ///< The operation completed successfully
-  HIPDECOMP_RESULT_INVALID_USAGE = 1,  ///< A user error, typically an invalid argument
-  HIPDECOMP_RESULT_NOT_SUPPORTED = 2,  ///< A user error, requesting an invalid or unsupported operation configuration
-  HIPDECOMP_RESULT_INTERNAL_ERROR = 3, ///< An internal library error, should be reported
-  HIPDECOMP_RESULT_HIP_ERROR = 4,     ///< An error occured in the HIP Runtime
+  HIPDECOMP_RESULT_SUCCESS = 0,         ///< The operation completed successfully
+  HIPDECOMP_RESULT_INVALID_USAGE = 1,   ///< A user error, typically an invalid argument
+  HIPDECOMP_RESULT_NOT_SUPPORTED = 2,   ///< A user error, requesting an invalid or unsupported operation configuration
+  HIPDECOMP_RESULT_INTERNAL_ERROR = 3,  ///< An internal library error, should be reported
+  HIPDECOMP_RESULT_HIP_ERROR = 4,       ///< An error occured in the HIP Runtime
   HIPDECOMP_RESULT_HIPTENSOR_ERROR = 5, ///< An error occured in the hipTENSOR library
-  HIPDECOMP_RESULT_MPI_ERROR = 6,      ///< An error occurred in the MPI library
-  HIPDECOMP_RESULT_NCCL_ERROR = 7,     ///< An error occured in the NCCL library
-  HIPDECOMP_RESULT_NVSHMEM_ERROR = 8,  ///< An error occured in the NVSHMEM library
+  HIPDECOMP_RESULT_MPI_ERROR = 6,       ///< An error occurred in the MPI library
+  HIPDECOMP_RESULT_NCCL_ERROR = 7,      ///< An error occured in the NCCL library
+  HIPDECOMP_RESULT_NVSHMEM_ERROR = 8,   ///< An error occured in the NVSHMEM library
 } hipdecompResult_t;
 
 /**

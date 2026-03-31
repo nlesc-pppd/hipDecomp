@@ -92,16 +92,16 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   auto strides_out_ptr = anyNonzeros(strides_out) ? strides_out.data() : nullptr;
 
   hiptensorTensorDescriptor_t desc_in;
-  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 3, extent_in.data(), strides_in_ptr,
-                                                 hiptensor_type, getAlignment(input)));
+  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 3, extent_in.data(),
+                                                  strides_in_ptr, hiptensor_type, getAlignment(input)));
   hiptensorTensorDescriptor_t desc_out;
   CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_out, 3, extent_out.data(),
-                                                 strides_out_ptr, hiptensor_type, getAlignment(output)));
+                                                  strides_out_ptr, hiptensor_type, getAlignment(output)));
 
   hiptensorOperationDescriptor_t desc_op;
   CHECK_HIPTENSOR(hiptensorCreatePermutation(handle->hiptensor_handle, &desc_op, desc_in, order_in.data(),
-                                            HIPTENSOR_OP_IDENTITY, desc_out, order_out.data(),
-                                            getHiptensorComputeType(hiptensor_type)));
+                                             HIPTENSOR_OP_IDENTITY, desc_out, order_out.data(),
+                                             getHiptensorComputeType(hiptensor_type)));
 
   hiptensorPlan_t plan;
   CHECK_HIPTENSOR(hiptensorCreatePlan(handle->hiptensor_handle, &plan, desc_op, handle->hiptensor_plan_pref, 0));
@@ -141,15 +141,15 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
 
   hiptensorTensorDescriptor_t desc_in;
   CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_in, 3, extent_in.data(), strides_in_ptr,
-                                               hip_type, HIPTENSOR_OP_IDENTITY));
+                                                hip_type, HIPTENSOR_OP_IDENTITY));
 
   hiptensorTensorDescriptor_t desc_out;
   CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_out, 3, extent_out.data(),
-                                               strides_out_ptr, hip_type, HIPTENSOR_OP_IDENTITY));
+                                                strides_out_ptr, hip_type, HIPTENSOR_OP_IDENTITY));
 
   T one(1);
   CHECK_HIPTENSOR(hiptensorPermutation(handle->hiptensor_handle, &one, input, &desc_in, order_in.data(), output,
-                                      &desc_out, order_out.data(), hip_type, stream));
+                                       &desc_out, order_out.data(), hip_type, stream));
 }
 #endif
 

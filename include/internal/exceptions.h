@@ -38,13 +38,13 @@
   do {                                                                                                                 \
     throw hipdecomp::InternalError(__FILE__, __LINE__, msg);                                                           \
   } while (false)
-#define THROW_HIP_ERROR(msg)                                                                                          \
+#define THROW_HIP_ERROR(msg)                                                                                           \
   do {                                                                                                                 \
-    throw hipdecomp::HipError(__FILE__, __LINE__, msg);                                                               \
+    throw hipdecomp::HipError(__FILE__, __LINE__, msg);                                                                \
   } while (false)
-#define THROW_HIPTENSOR_ERROR(msg)                                                                                      \
+#define THROW_HIPTENSOR_ERROR(msg)                                                                                     \
   do {                                                                                                                 \
-    throw hipdecomp::HiptensorError(__FILE__, __LINE__, msg);                                                           \
+    throw hipdecomp::HiptensorError(__FILE__, __LINE__, msg);                                                          \
   } while (false)
 #define THROW_MPI_ERROR(msg)                                                                                           \
   do {                                                                                                                 \

@@ -322,7 +322,7 @@ hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle_in, MPI_Comm mpi_comm)
     CHECK_HIPTENSOR(hiptensorCreate(&handle->hiptensor_handle));
 #if HIPTENSOR_MAJOR_VERSION >= 2
     CHECK_HIPTENSOR(hiptensorCreatePlanPreference(handle->hiptensor_handle, &handle->hiptensor_plan_pref,
-                                                 HIPTENSOR_ALGO_DEFAULT, HIPTENSOR_JIT_MODE_NONE));
+                                                  HIPTENSOR_ALGO_DEFAULT, HIPTENSOR_JIT_MODE_NONE));
 #endif
 
     // Gather hipDecomp environment variable settings
