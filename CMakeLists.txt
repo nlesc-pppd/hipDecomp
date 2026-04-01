@@ -9,7 +9,7 @@ endif()
 
 # User-defined build options
 option(HIPDECOMP_BUILD_FORTRAN "Build Fortran bindings" ON)
-#option(HIPDECOMP_ENABLE_NVTX "Enable NVTX ranges" ON)
+option(HIPDECOMP_ENABLE_ROCTX "Enable ROCTx ranges" ON)
 #option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
 option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
 
@@ -124,9 +124,9 @@ if (NOT TEST_STD_FS_RESULT)
   target_link_libraries(HIPDECOMP PRIVATE -lstdc++fs)
 endif()
 
-# if (HIPDECOMP_ENABLE_NVTX)
-#   target_compile_definitions(hipdecomp PRIVATE ENABLE_NVTX)
-# endif()
+if (HIPDECOMP_ENABLE_ROCTX)
+  target_compile_definitions(hipdecomp PRIVATE ENABLE_ROCTX)
+endif()
 
 # if (HIPDECOMP_ENABLE_NVSHMEM)
 #   target_compile_definitions(hipdecomp PRIVATE ENABLE_NVSHMEM)
