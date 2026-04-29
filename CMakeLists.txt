@@ -82,6 +82,11 @@ if (HIPDECOMP_ENABLE_ROCSHMEM)
   find_package(rocshmem REQUIRED)
 endif()
 
+if (HIPDECOMP_ENABLE_ROCTX)
+  # Get rocprofiler-sdk-roctx library
+  find_package(rocprofiler-sdk-roctx REQUIRED)
+endif()
+
 # Building HIPDECOMP shared lib
 add_library(hipdecomp SHARED)
 set_target_properties(hipdecomp PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -108,6 +113,9 @@ target_link_libraries(hipdecomp PUBLIC hip::host hip::device)
 target_link_libraries(hipdecomp PUBLIC MPI::MPI_CXX)
 target_link_libraries(hipdecomp PRIVATE hiptensor)
 target_link_libraries(hipdecomp PRIVATE rccl)
+if (HIPDECOMP_ENABLE_ROCTX)
+  target_link_libraries(hipdecomp PRIVATE rocprofiler-sdk-roctx)
+endif()
 if (CRAY_CC_BIN)
   # In Cray environments, add link to GTL lib for GPU-aware MPI support
   target_link_libraries(hipdecomp PRIVATE ${CRAY_MPI_GTL_HIP_LIBRARY})
