@@ -80,7 +80,7 @@ program main
   ! Cannot use NCCL if multiple ranks run on the same GPU
   disable_nccl_backends = .false.
   if (local_rank >= device_count) disable_nccl_backends = .true.
-  call MPI_Allreduce(disable_nccl_backends, disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD, ierr)
+  call MPI_Allreduce(MPI_IN_PLACE, disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD, ierr)
 
   istat = hipdecompInit(handle, MPI_COMM_WORLD)
   call CHECK_HIPDECOMP_EXIT(istat)
