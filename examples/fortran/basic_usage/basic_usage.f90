@@ -43,7 +43,7 @@ program main
 
   ! MPI
   integer :: rank, local_rank, nranks, ierr
-  integer :: local_comm
+  integer :: local_comm, device_count
 
   ! hipdecomp
   type(hipdecompHandle) :: handle
@@ -56,7 +56,7 @@ program main
   ! data
   real(real32), allocatable, target :: data(:)
   real(real32), pointer :: data_d(:)
-  real(real32), pointer :: transpose_work_d(:), halo_work_d(:)
+  real(real32), pointer, contiguous :: transpose_work_d(:), halo_work_d(:)
   real(real32), pointer, contiguous :: data_x(:,:,:), data_y(:,:,:), data_z(:,:,:)
   real(real32), pointer :: data_x_d(:,:,:), data_y_d(:,:,:), data_z_d(:,:,:)
   integer(8) :: data_num_elements, transpose_work_num_elements, halo_work_num_elements
@@ -77,7 +77,9 @@ program main
 
   call MPI_Comm_split_Type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, local_comm, ierr)
   call MPI_Comm_rank(local_comm, local_rank, ierr)
-  ierr = hipSetDevice(local_rank)
+
+  ierr = hipGetDeviceCount(device_count)
+  ierr = hipSetDevice(mod(local_rank, device_count))
 
   istat = hipdecompInit(handle, MPI_COMM_WORLD)
   call CHECK_HIPDECOMP_EXIT(istat)
