@@ -43,7 +43,7 @@ program main
 
   ! MPI
   integer :: rank, local_rank, nranks, ierr
-  integer :: local_comm
+  integer :: local_comm, device_count
 
   ! hipdecomp
   type(hipdecompHandle) :: handle
@@ -52,11 +52,12 @@ program main
   type(hipdecompGridDesc) :: grid_desc
   type(hipdecompPencilInfo) :: pinfo_x, pinfo_y, pinfo_z
   integer :: istat
+  logical :: disable_nccl_backends
 
   ! data
   real(real32), allocatable, target :: data(:)
   real(real32), pointer :: data_d(:)
-  real(real32), pointer :: transpose_work_d(:), halo_work_d(:)
+  real(real32), pointer, contiguous :: transpose_work_d(:), halo_work_d(:)
   real(real32), pointer, contiguous :: data_x(:,:,:), data_y(:,:,:), data_z(:,:,:)
   real(real32), pointer :: data_x_d(:,:,:), data_y_d(:,:,:), data_z_d(:,:,:)
   integer(8) :: data_num_elements, transpose_work_num_elements, halo_work_num_elements
@@ -72,7 +73,14 @@ program main
 
   call MPI_Comm_split_Type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, local_comm, ierr)
   call MPI_Comm_rank(local_comm, local_rank, ierr)
-  ierr = hipSetDevice(local_rank)
+
+  ierr = hipGetDeviceCount(device_count)
+  ierr = hipSetDevice(mod(local_rank, device_count))
+
+  ! Cannot use NCCL if multiple ranks run on the same GPU
+  disable_nccl_backends = .false.
+  if (local_rank >= device_count) disable_nccl_backends = .true.
+  call MPI_Allreduce(disable_nccl_backends, disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD, ierr)
 
   istat = hipdecompInit(handle, MPI_COMM_WORLD)
   call CHECK_HIPDECOMP_EXIT(istat)
@@ -97,7 +105,7 @@ program main
   options%n_warmup_trials = 3
   options%n_trials = 5
   options%dtype = HIPDECOMP_FLOAT
-  options%disable_nccl_backends = .false.
+  options%disable_nccl_backends = disable_nccl_backends
   options%disable_nvshmem_backends = .false.
   options%skip_threshold = 0.0
 
