@@ -214,7 +214,7 @@ if (HIPDECOMP_BUILD_EXTRAS)
   add_subdirectory(examples/cc/taylor_green)
 
    if (HIPDECOMP_BUILD_FORTRAN)
-     find_package(hipfort REQUIRED COMPONENTS hip hipfft)
+     find_package(hipfort REQUIRED COMPONENTS hip)
      add_subdirectory(tests/fortran)
      add_subdirectory(examples/fortran/basic_usage)
      # add_subdirectory(examples/fortran/poisson)
