@@ -53,16 +53,6 @@
     if (hipSuccess != err) { throw hipdecomp::HipError(__FILE__, __LINE__, hipGetErrorString(err)); }                  \
   } while (false)
 
-#define CHECK_HIP_DRV(call)                                                                                            \
-  do {                                                                                                                 \
-    hipError_t err = cuFnTable.pfn_##call;                                                                             \
-    if (hipSuccess != err) {                                                                                           \
-      const char* error_str;                                                                                           \
-      cuFnTable.pfn_cuGetErrorString(err, &error_str);                                                                 \
-      throw hipdecomp::HipError(__FILE__, __LINE__, error_str);                                                        \
-    }                                                                                                                  \
-  } while (false)
-
 #define CHECK_HIP_LAUNCH()                                                                                             \
   do {                                                                                                                 \
     hipError_t err = hipGetLastError();                                                                                \
