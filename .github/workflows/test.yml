@@ -19,7 +19,7 @@ jobs:
 
       - name: Build hipDecomp
         run: |
-          arch=$(offload-arch | head -n 1)
+          arch=$(rocm_agent_enumerator | head -n 1)
           cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
           make -C build -j
 
