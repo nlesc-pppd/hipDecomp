@@ -32,42 +32,42 @@ jobs:
       - name: Run C++ transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_cc  # disable NCCL/NVSHMEM backends
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_halo_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_padding_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_mix_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_ac_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_cc  # disable NCCL/NVSHMEM backends
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_halo_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_padding_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_mix_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_ac_cc
 
       - name: Run Fortran transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_fortran  # disable NCCL/NVSHMEM backends
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_halo_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_padding_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_mix_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" transpose_test_ac_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_fortran  # disable NCCL/NVSHMEM backends
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_halo_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_padding_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_mix_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_ac_fortran
 
       - name: Run C++ halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_cc  # disable NCCL/NVSHMEM backends
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" halo_test_halomix_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" halo_test_padding_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" halo_test_gdimdist_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" halo_test_mix_cc
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 2" halo_test_ac_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_cc  # disable NCCL/NVSHMEM backends
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_halomix_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_padding_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_gdimdist_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_mix_cc
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_ac_cc
 
       - name: Run Fortran halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" --config_overrides "backend:[1,2]" halo_test_fortran  # disable NCCL/NVSHMEM backends
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" halo_test_halomix_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" halo_test_padding_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" halo_test_gdimdist_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" halo_test_mix_fortran
-          # python3 test_runner.py --ngpu 2 --launcher_cmd "mpirun -n 4" halo_test_ac_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" --config_overrides "backend:[1,2]" halo_test_fortran  # disable NCCL/NVSHMEM backends
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" halo_test_halomix_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" halo_test_padding_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" halo_test_gdimdist_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" halo_test_mix_fortran
+          # python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 4" halo_test_ac_fortran
 
       - name: Run C++ examples
         run: |
