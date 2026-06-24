@@ -99,12 +99,12 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   strides_out_ext[0] = 1;
 
   for (int i = 0; i < 3; ++i) {
-    extent_in_ext[i+1] = extent_in[i];
+    extent_in_ext[i + 1] = extent_in[i];
     // new axis is axis 0, so need to add one to each input value
-    order_out_ext[i+1] = order_out[i] + 1;
+    order_out_ext[i + 1] = order_out[i] + 1;
     // size of new axis is num_extra, so input strides have to be multiplied by this
-    strides_in_ext[i+1] = strides_in[i] * num_extra;
-    strides_out_ext[i+1] = strides_out[i] * num_extra;
+    strides_in_ext[i + 1] = strides_in[i] * num_extra;
+    strides_out_ext[i + 1] = strides_out[i] * num_extra;
   }
 
   for (int i = 0; i < 4; ++i) {
@@ -132,7 +132,7 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
 
   // scalar value must be of float type as we force hiptensor to run the computation in float.
   // this works as long as the scalar value is one
-  //T one(1);
+  // T one(1);
   float one(1.0f);
   CHECK_HIPTENSOR(hiptensorPermute(handle->hiptensor_handle, plan, &one, input, output, stream));
 
@@ -175,12 +175,12 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   strides_out_ext[0] = 1;
 
   for (int i = 0; i < 3; ++i) {
-    extent_in_ext[i+1] = extent_in[i];
+    extent_in_ext[i + 1] = extent_in[i];
     // new axis is axis 0, so need to add one to each input value
-    order_out_ext[i+1] = order_out[i] + 1;
+    order_out_ext[i + 1] = order_out[i] + 1;
     // size of new axis is num_extra, so input strides have to be multiplied by this
-    strides_in_ext[i+1] = strides_in[i] * num_extra;
-    strides_out_ext[i+1] = strides_out[i] * num_extra;
+    strides_in_ext[i + 1] = strides_in[i] * num_extra;
+    strides_out_ext[i + 1] = strides_out[i] * num_extra;
   }
 
   for (int i = 0; i < 4; ++i) {
@@ -201,7 +201,7 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
 
   // scalar value must be of float type as we force hiptensor to run the computation in float.
   // this works as long as the scalar value is one
-  //T one(1);
+  // T one(1);
   float one(1.0f);
   CHECK_HIPTENSOR(hiptensorPermutation(handle->hiptensor_handle, &one, input, &desc_in, order_in_ext.data(), output,
                                        &desc_out, order_out_ext.data(), hip_type, stream));
