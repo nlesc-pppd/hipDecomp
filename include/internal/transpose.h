@@ -83,45 +83,57 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   // hiptensorDataType_t hiptensor_type = getHiptensorDataType<T>();
   hiptensorDataType_t hiptensor_type = getHiptensorDataType<float>();
 
-  std::array<int32_t, 4> order_in{0, 1, 2, 3};
-  std::array<int32_t, 4> order_out_;
-  std::array<int64_t, 4> extent_in_;
-  std::array<int64_t, 4> extent_out;
-  std::array<int64_t, 4> strides_in_;
-  std::array<int64_t, 4> strides_out_;
-  for (int i = 0; i < 3; ++i) {
-    extent_out[i] = extent_in[order_out[i]];
-    if (extent_out[i] == 0) return;
-    extent_in_[i] = extent_in[i];
-    order_out_[i] = order_out[i];
-    strides_in_[i] = strides_in[i];
-    strides_out_[i] = strides_out[i];
-  }
-  extent_out[3] = sizeof(T) / sizeof(float);
-  extent_in_[3] = sizeof(T) / sizeof(float);
-  order_out_[3] = order_in[3];
-  strides_in_[3] = 0;
-  strides_out_[3] = 0;
+  // Extend arrays from 3 to 4 dimensions
+  std::array<int32_t, 4> order_in_ext{0, 1, 2, 3};
+  std::array<int32_t, 4> order_out_ext;
+  std::array<int64_t, 4> extent_in_ext;
+  std::array<int64_t, 4> extent_out_ext;
+  std::array<int64_t, 4> strides_in_ext;
+  std::array<int64_t, 4> strides_out_ext;
 
-  auto strides_in_ptr = anyNonzeros(strides_in_) ? strides_in_.data() : nullptr;
-  auto strides_out_ptr = anyNonzeros(strides_out_) ? strides_out_.data() : nullptr;
+  const int num_extra = sizeof(T) / sizeof(float);
+
+  extent_in_ext[0] = num_extra;
+  order_out_ext[0] = 0;
+  strides_in_ext[0] = 1;
+  strides_out_ext[0] = 1;
+
+  for (int i = 0; i < 3; ++i) {
+    extent_in_ext[i + 1] = extent_in[i];
+    // new axis is axis 0, so need to add one to each input value
+    order_out_ext[i + 1] = order_out[i] + 1;
+    // size of new axis is num_extra, so input strides have to be multiplied by this
+    strides_in_ext[i + 1] = strides_in[i] * num_extra;
+    strides_out_ext[i + 1] = strides_out[i] * num_extra;
+  }
+
+  for (int i = 0; i < 4; ++i) {
+    extent_out_ext[i] = extent_in_ext[order_out_ext[i]];
+    if (extent_out_ext[i] == 0) return;
+  }
+
+  auto strides_in_ptr = anyNonzeros(strides_in_ext) ? strides_in_ext.data() : nullptr;
+  auto strides_out_ptr = anyNonzeros(strides_out_ext) ? strides_out_ext.data() : nullptr;
 
   hiptensorTensorDescriptor_t desc_in;
-  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 4, extent_in_.data(),
+  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 4, extent_in_ext.data(),
                                                   strides_in_ptr, hiptensor_type, getAlignment(input)));
   hiptensorTensorDescriptor_t desc_out;
-  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_out, 4, extent_out.data(),
+  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_out, 4, extent_out_ext.data(),
                                                   strides_out_ptr, hiptensor_type, getAlignment(output)));
 
   hiptensorOperationDescriptor_t desc_op;
-  CHECK_HIPTENSOR(hiptensorCreatePermutation(handle->hiptensor_handle, &desc_op, desc_in, order_in.data(),
-                                             HIPTENSOR_OP_IDENTITY, desc_out, order_out_.data(),
+  CHECK_HIPTENSOR(hiptensorCreatePermutation(handle->hiptensor_handle, &desc_op, desc_in, order_in_ext.data(),
+                                             HIPTENSOR_OP_IDENTITY, desc_out, order_out_ext.data(),
                                              getHiptensorComputeType(hiptensor_type)));
 
   hiptensorPlan_t plan;
   CHECK_HIPTENSOR(hiptensorCreatePlan(handle->hiptensor_handle, &plan, desc_op, handle->hiptensor_plan_pref, 0));
 
-  T one(1);
+  // scalar value must be of float type as we force hiptensor to run the computation in float.
+  // this works as long as the scalar value is one
+  // T one(1);
+  float one(1.0f);
   CHECK_HIPTENSOR(hiptensorPermute(handle->hiptensor_handle, plan, &one, input, output, stream));
 
   CHECK_HIPTENSOR(hiptensorDestroyTensorDescriptor(desc_in));
@@ -147,40 +159,52 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   // hipDataType hip_type = getHipDataType<T>();
   hipDataType hip_type = getHipDataType<float>();
 
-  std::array<int32_t, 4> order_in{0, 1, 2, 3};
-  std::array<int32_t, 4> order_out_;
-  std::array<int64_t, 4> extent_in_;
-  std::array<int64_t, 4> extent_out;
-  std::array<int64_t, 4> strides_in_;
-  std::array<int64_t, 4> strides_out_;
-  for (int i = 0; i < 3; ++i) {
-    extent_out[i] = extent_in[order_out[i]];
-    if (extent_out[i] == 0) return;
-    extent_in_[i] = extent_in[i];
-    order_out_[i] = order_out[i];
-    strides_in_[i] = strides_in[i];
-    strides_out_[i] = strides_out[i];
-  }
-  extent_out[3] = sizeof(T) / sizeof(float);
-  extent_in_[3] = sizeof(T) / sizeof(float);
-  order_out_[3] = order_in[3];
-  strides_in_[3] = 0;
-  strides_out_[3] = 0;
+  // Extend arrays from 3 to 4 dimensions
+  std::array<int32_t, 4> order_in_ext{0, 1, 2, 3};
+  std::array<int32_t, 4> order_out_ext;
+  std::array<int64_t, 4> extent_in_ext;
+  std::array<int64_t, 4> extent_out_ext;
+  std::array<int64_t, 4> strides_in_ext;
+  std::array<int64_t, 4> strides_out_ext;
 
-  auto strides_in_ptr = anyNonzeros(strides_in_) ? strides_in_.data() : nullptr;
-  auto strides_out_ptr = anyNonzeros(strides_out_) ? strides_out_.data() : nullptr;
+  const int num_extra = sizeof(T) / sizeof(float);
+
+  extent_in_ext[0] = num_extra;
+  order_out_ext[0] = 0;
+  strides_in_ext[0] = 1;
+  strides_out_ext[0] = 1;
+
+  for (int i = 0; i < 3; ++i) {
+    extent_in_ext[i + 1] = extent_in[i];
+    // new axis is axis 0, so need to add one to each input value
+    order_out_ext[i + 1] = order_out[i] + 1;
+    // size of new axis is num_extra, so input strides have to be multiplied by this
+    strides_in_ext[i + 1] = strides_in[i] * num_extra;
+    strides_out_ext[i + 1] = strides_out[i] * num_extra;
+  }
+
+  for (int i = 0; i < 4; ++i) {
+    extent_out_ext[i] = extent_in_ext[order_out_ext[i]];
+    if (extent_out_ext[i] == 0) return;
+  }
+
+  auto strides_in_ptr = anyNonzeros(strides_in_ext) ? strides_in_ext.data() : nullptr;
+  auto strides_out_ptr = anyNonzeros(strides_out_ext) ? strides_out_ext.data() : nullptr;
 
   hiptensorTensorDescriptor_t desc_in;
-  CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_in, 3, extent_in_.data(),
+  CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_in, 4, extent_in_ext.data(),
                                                 strides_in_ptr, hip_type, HIPTENSOR_OP_IDENTITY));
 
   hiptensorTensorDescriptor_t desc_out;
-  CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_out, 3, extent_out.data(),
+  CHECK_HIPTENSOR(hiptensorInitTensorDescriptor(handle->hiptensor_handle, &desc_out, 4, extent_out_ext.data(),
                                                 strides_out_ptr, hip_type, HIPTENSOR_OP_IDENTITY));
 
-  T one(1);
-  CHECK_HIPTENSOR(hiptensorPermutation(handle->hiptensor_handle, &one, input, &desc_in, order_in.data(), output,
-                                       &desc_out, order_out_.data(), hip_type, stream));
+  // scalar value must be of float type as we force hiptensor to run the computation in float.
+  // this works as long as the scalar value is one
+  // T one(1);
+  float one(1.0f);
+  CHECK_HIPTENSOR(hiptensorPermutation(handle->hiptensor_handle, &one, input, &desc_in, order_in_ext.data(), output,
+                                       &desc_out, order_out_ext.data(), hip_type, stream));
 }
 #endif
 
