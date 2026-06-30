@@ -12,6 +12,7 @@ option(HIPDECOMP_BUILD_FORTRAN "Build Fortran bindings" ON)
 option(HIPDECOMP_ENABLE_ROCTX "Enable ROCTx ranges" ON)
 #option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
 option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
+option(HIPDECOMP_ENABLE_COVERAGE "Enable code coverage in HIP and C++ sources" OFF)
 
 # Use AMD Clang compilers by default
 find_program(CMAKE_CXX_COMPILER "amdclang++" REQUIRED)
@@ -85,6 +86,11 @@ endif()
 if (HIPDECOMP_ENABLE_ROCTX)
   # Get rocprofiler-sdk-roctx library
   find_package(rocprofiler-sdk-roctx REQUIRED)
+endif()
+
+if(HIPDECOMP_ENABLE_COVERAGE)
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX,HIP>:-fprofile-instr-generate$<SEMICOLON>-fcoverage-mapping>)
+  add_link_options($<$<LINK_LANGUAGE:CXX,HIP>:-fprofile-instr-generate$<SEMICOLON>-fcoverage-mapping>)
 endif()
 
 # Building HIPDECOMP shared lib
