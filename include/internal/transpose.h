@@ -484,9 +484,9 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
             }
 
             localPermute(handle, extents, order, strides_in, strides_out, src, dst, graph_stream);
+#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
             hipStreamCaptureStatus capture_status;
             CHECK_HIP(hipStreamIsCapturing(graph_stream, &capture_status));
-#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
             CHECK_HIP(hipEventRecordWithFlags(grid_desc->events[dst_rank], graph_stream,
                                               capture_status == hipStreamCaptureStatusActive ? hipEventRecordExternal
                                                                                              : hipEventRecordDefault));
@@ -576,17 +576,17 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
             hipdecomp_batched_d2d_memcpy_3d(memcpy_params, graph_stream);
             memcpy_count = 0;
           }
+#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
           if (pipelined) {
             hipStreamCaptureStatus capture_status;
             CHECK_HIP(hipStreamIsCapturing(graph_stream, &capture_status));
-#if (HIP_VERSION_MAJOR >= 7) || (HIP_VERSION_MAJOR == 6 && HIP_VERSION_MINOR >= 4)
             CHECK_HIP(hipEventRecordWithFlags(grid_desc->events[dst_rank], graph_stream,
                                               capture_status == hipStreamCaptureStatusActive ? hipEventRecordExternal
                                                                                              : hipEventRecordDefault));
-#else
-            CHECK_HIP(hipEventRecord(grid_desc->events[dst_rank], graph_stream));
-#endif
           }
+#else
+          if (pipelined) CHECK_HIP(hipEventRecord(grid_desc->events[dst_rank], graph_stream));
+#endif
         }
         if (handle->hip_graphs_enable && pipelined && splits_a.size() > 1) {
           grid_desc->graph_cache.endCapture(key);
