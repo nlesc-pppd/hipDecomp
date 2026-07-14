@@ -214,7 +214,7 @@ static void getHipdecompEnvVars(hipdecompHandle_t& handle) {
   }
 
   // Check HIPDECOMP_ENABLE_HIP_GRAPHS (HIP Graphs usage in pipelined backends)
-  handle->hip_graphs_enable = checkEnvVar("HIPDECOMP_ENABLE_hip_graphS");
+  handle->hip_graphs_enable = checkEnvVar("HIPDECOMP_ENABLE_HIP_GRAPHS");
   if (handle->hip_graphs_enable) {}
 
   // Check HIPDECOMP_ENABLE_PERFORMANCE_REPORT (Performance reporting)

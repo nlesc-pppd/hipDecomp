@@ -22,7 +22,8 @@
 #include <vector>
 
 #include <hip/hip_runtime.h>
-#include <mpi.h>
+//#include <mpi.h>
+#include "mpi_debug.h"
 #include <rccl/rccl.h>
 #ifdef ENABLE_NVSHMEM
 #include <nvshmem.h>
@@ -164,8 +165,8 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
   }
 
   // Self-copy with hipMemcpy
-  CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
-                           send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+  CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
+                           send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
 
   // Event dependency on internal streams for completion of intra-group transfers
   for (int i = 0; i < handle->device_p2p_ce_count; ++i) {
@@ -253,14 +254,14 @@ static void hipdecompAlltoall(const hipdecompHandle_t& handle, const hipdecompGr
     int self_rank = (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info.rank : grid_desc->col_comm_info.rank;
 
     // Self-copy with hipMemcpy
-    CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
-                             send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+    CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
+                             send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
 
     for (int i = 1; i < recv_counts.size(); ++i) {
       int src_rank, dst_rank;
       getAlltoallPeerRanks(grid_desc, comm_axis, i, src_rank, dst_rank);
       if (recv_counts[src_rank] != 0) {
-        CHECK_MPI(MPI_Irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank], getMpiDataType<T>(), src_rank, 0,
+        CHECK_MPI(mpi_debug::MPI_Irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank], getMpiDataType<T>(), src_rank, 0,
                             comm, &reqs[src_rank]));
       }
     }
@@ -269,12 +270,19 @@ static void hipdecompAlltoall(const hipdecompHandle_t& handle, const hipdecompGr
       int src_rank, dst_rank;
       getAlltoallPeerRanks(grid_desc, comm_axis, i, src_rank, dst_rank);
       if (send_counts[dst_rank] != 0) {
-        CHECK_MPI(MPI_Isend(send_buff + send_offsets[dst_rank], send_counts[dst_rank], getMpiDataType<T>(), dst_rank, 0,
+        CHECK_MPI(mpi_debug::MPI_Isend(send_buff + send_offsets[dst_rank], send_counts[dst_rank], getMpiDataType<T>(), dst_rank, 0,
                             comm, &reqs[dst_rank + send_counts.size()]));
       }
     }
 
     CHECK_MPI(MPI_Waitall(reqs.size(), reqs.data(), MPI_STATUSES_IGNORE));
+    for (int i = 1; i < recv_counts.size(); ++ i) {
+      int src_rank, dst_rank;
+      getAlltoallPeerRanks(grid_desc, comm_axis, i, src_rank, dst_rank);
+      if (recv_counts[src_rank != 0]) {
+        mpi_debug::print_irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank]);
+      }
+    }
 
     break;
   }
@@ -287,18 +295,18 @@ static void hipdecompAlltoall(const hipdecompHandle_t& handle, const hipdecompGr
     bool use_alltoall = canUseMpiAlltoall(send_counts, send_offsets, recv_counts, recv_offsets);
 
     if (use_alltoall) {
-      CHECK_MPI(MPI_Alltoall(send_buff, send_counts[0], getMpiDataType<T>(), recv_buff, recv_counts[0],
+      CHECK_MPI(mpi_debug::MPI_Alltoall(send_buff, send_counts[0], getMpiDataType<T>(), recv_buff, recv_counts[0],
                              getMpiDataType<T>(), comm));
     } else {
       // Self-copy with hipMemcpy
-      CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
-                               send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+      CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
+                               send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
 
       auto send_counts_mod = send_counts;
       auto recv_counts_mod = recv_counts;
       send_counts_mod[self_rank] = 0;
       recv_counts_mod[self_rank] = 0;
-      CHECK_MPI(MPI_Alltoallv(send_buff, send_counts_mod.data(), send_offsets.data(), getMpiDataType<T>(), recv_buff,
+      CHECK_MPI(mpi_debug::MPI_Alltoallv(send_buff, send_counts_mod.data(), send_offsets.data(), getMpiDataType<T>(), recv_buff,
                               recv_counts_mod.data(), recv_offsets.data(), getMpiDataType<T>(), comm));
     }
     break;
@@ -375,8 +383,8 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
 
         if (src_rank == self_rank) {
           // Self-copy with hipMemcpy
-          CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets_nvshmem[self_rank], send_buff + send_offsets[self_rank],
-                                   send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+          CHECK_HIP(hipMemcpy(recv_buff + recv_offsets_nvshmem[self_rank], send_buff + send_offsets[self_rank],
+                                   send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
         } else {
           CHECK_HIP(hipStreamWaitEvent(pl_stream, grid_desc->events[dst_rank], 0));
           if (!synced) {
@@ -442,8 +450,8 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
 
       if (src_rank == self_rank) {
         // Self-copy with hipMemcpy
-        CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
-                                 send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
+                                 send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
       } else {
         CHECK_HIP(hipStreamWaitEvent(pl_stream, grid_desc->events[dst_rank], 0));
 
@@ -491,23 +499,32 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
       int dst_rank = dst_ranks[i];
       if (src_rank == self_rank) {
         // Self-copy with hipMemcpy
-        CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
-                                 send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[self_rank], send_buff + send_offsets[self_rank],
+                                 send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice));
       } else {
         CHECK_HIP(hipEventSynchronize(grid_desc->events[dst_rank]));
 
         if (send_counts[dst_rank] != 0) {
-          CHECK_MPI(MPI_Isend(send_buff + send_offsets[dst_rank], send_counts[dst_rank], getMpiDataType<T>(), dst_rank,
+          CHECK_MPI(mpi_debug::MPI_Isend(send_buff + send_offsets[dst_rank], send_counts[dst_rank], getMpiDataType<T>(), dst_rank,
                               0, comm, &reqs[i]));
         }
         if (recv_counts[src_rank] != 0) {
-          CHECK_MPI(MPI_Irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank], getMpiDataType<T>(), src_rank,
+          CHECK_MPI(mpi_debug::MPI_Irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank], getMpiDataType<T>(), src_rank,
                               0, comm, &reqs[i + src_ranks.size()]));
         }
       }
     }
 
     CHECK_MPI(MPI_Waitall(reqs.size(), reqs.data(), MPI_STATUSES_IGNORE));
+    // print Irecv result
+    for (int i = 0; i < src_ranks.size(); ++i) {
+      int src_rank = src_ranks[i];
+      int dst_rank = dst_ranks[i];
+      if (src_rank == dst_rank) continue;
+      if (recv_counts[src_rank] == 0) continue;
+      mpi_debug::print_irecv(recv_buff + recv_offsets[src_rank], recv_counts[src_rank]);
+    }
+    
 
     break;
   }
@@ -560,8 +577,8 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
       for (int i = 0; i < send_counts.size(); ++i) {
         if (peer_ranks[i] == handle->rank) {
           // Self-copy with hipMemcpy
-          CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
-                                   hipMemcpyDeviceToDevice, stream));
+          CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
+                                   hipMemcpyDeviceToDevice));
         } else {
           if (peer_ranks[(i + 1) % 2] != -1) {
             nvshmemx_putmem_nbi_on_stream(recv_buff + recv_offsets[i], send_buff + send_offsets[(i + 1) % 2],
@@ -592,8 +609,8 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
     for (int i = 0; i < send_counts.size(); ++i) {
       if (peer_ranks[i] == handle->rank) {
         // Self-copy with hipMemcpy
-        CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
-                                 hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
+                                 hipMemcpyDeviceToDevice));
       } else {
         if (send_counts[(i + 1) % 2] != 0 && peer_ranks[(i + 1) % 2] != -1) {
           CHECK_NCCL(ncclSend(send_buff + send_offsets[(i + 1) % 2], send_counts[(i + 1) % 2] * sizeof(T), ncclChar,
@@ -615,15 +632,15 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
     for (int i = 0; i < send_counts.size(); ++i) {
       if (peer_ranks[i] == handle->rank) {
         // Self-copy with hipMemcpy
-        CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
-                                 hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
+                                 hipMemcpyDeviceToDevice));
       } else {
         if (recv_counts[(i + 1) % 2] != 0 && peer_ranks[(i + 1) % 2] != -1) {
-          CHECK_MPI(MPI_Irecv(recv_buff + recv_offsets[(i + 1) % 2], recv_counts[(i + 1) % 2], getMpiDataType<T>(),
+          CHECK_MPI(mpi_debug::MPI_Irecv(recv_buff + recv_offsets[(i + 1) % 2], recv_counts[(i + 1) % 2], getMpiDataType<T>(),
                               peer_ranks[(i + 1) % 2], 0, comm, &reqs[(i + 1) % 2]));
         }
         if (send_counts[i] != 0 && peer_ranks[i] != -1) {
-          CHECK_MPI(MPI_Isend(send_buff + send_offsets[i], send_counts[i], getMpiDataType<T>(), peer_ranks[i], 0, comm,
+          CHECK_MPI(mpi_debug::MPI_Isend(send_buff + send_offsets[i], send_counts[i], getMpiDataType<T>(), peer_ranks[i], 0, comm,
                               &reqs[i + send_counts.size()]));
         }
       }
@@ -638,16 +655,16 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
     for (int i = 0; i < send_counts.size(); ++i) {
       if (peer_ranks[i] == handle->rank) {
         // Self-copy with hipMemcpy
-        CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
-                                 hipMemcpyDeviceToDevice, stream));
+        CHECK_HIP(hipMemcpy(recv_buff + recv_offsets[i], send_buff + send_offsets[i], send_counts[i] * sizeof(T),
+                                 hipMemcpyDeviceToDevice));
       } else {
         MPI_Request r = MPI_REQUEST_NULL;
         if (recv_counts[(i + 1) % 2] != 0 && peer_ranks[(i + 1) % 2] != -1) {
-          CHECK_MPI(MPI_Irecv(recv_buff + recv_offsets[(i + 1) % 2], recv_counts[(i + 1) % 2], getMpiDataType<T>(),
+          CHECK_MPI(mpi_debug::MPI_Irecv(recv_buff + recv_offsets[(i + 1) % 2], recv_counts[(i + 1) % 2], getMpiDataType<T>(),
                               peer_ranks[(i + 1) % 2], 0, comm, &r));
         }
         if (send_counts[i] != 0 && peer_ranks[i] != -1) {
-          CHECK_MPI(MPI_Send(send_buff + send_offsets[i], send_counts[i], getMpiDataType<T>(), peer_ranks[i], 0, comm));
+          CHECK_MPI(mpi_debug::MPI_Send(send_buff + send_offsets[i], send_counts[i], getMpiDataType<T>(), peer_ranks[i], 0, comm));
         }
         CHECK_MPI(MPI_Wait(&r, MPI_STATUS_IGNORE));
       }

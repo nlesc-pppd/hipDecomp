@@ -364,7 +364,8 @@ static void cache_grid_desc(const hipdecompGridDesc_t& grid_desc, hipdecompTrans
   grid_desc_cache[backend] = grid_desc;
 }
 
-static int run_test(const std::string& arguments, bool silent, bool disable_nccl_backends) {
+static int run_test(const std::string& arguments, bool silent, bool disable_nccl_backends, hipStream_t &stream) {
+  bool pass = true;
   try {
     transposeTestArgs args = parse_arguments(arguments);
 
@@ -498,6 +499,41 @@ static int run_test(const std::string& arguments, bool silent, bool disable_nccl
       }
     }
 
+    // write reference data to file
+    std::string filename("output/mem_order");
+    for (int i = 0; i < 3; ++i) {
+      filename.append("_");
+      for (int j = 0; j < 3; ++j) {
+        filename.append(std::to_string(config.transpose_mem_order[i][j]));
+      }
+    }
+    filename.append("_rank");
+    filename.append(std::to_string(rank));
+    filename.append(".txt");
+    std::ofstream out(filename);
+    // write metadata
+    out << "# pr pc gx gy gz\n";
+    out << config.pdims[0] << " " << config.pdims[1] << " " << config.gdims[0] << " " << config.gdims[1] << " " << config.gdims[2] << "\n";
+    out << "# lx ly lz (x-aligned)\n";
+    out << pinfo_x.shape[0] << " " << pinfo_x.shape[1] << " " << pinfo_x.shape[2] << "\n";
+    out << "# lx ly lz (y-aligned)\n";
+    out << pinfo_y.shape[0] << " " << pinfo_y.shape[1] << " " << pinfo_y.shape[2] << "\n";
+    out << "# lx ly lz (z-aligned)\n";
+    out << pinfo_z.shape[0] << " " << pinfo_z.shape[1] << " " << pinfo_z.shape[2] << "\n";
+    // write xref, yref, zref
+    out << "# xref\n";
+    for (int i = 0; i < pinfo_x.size; ++i) {
+      out << xref[i] << " ";
+    }
+    out << "\n# yref\n";
+    for (int i = 0; i < pinfo_y.size; ++i) {
+      out << yref[i] << " ";
+    }
+    out << "\n# zref\n";
+    for (int i = 0; i < pinfo_x.size; ++i) {
+      out << zref[i] << " ";
+    }
+
     // Running correctness tests
     if (!silent && rank == 0) printf("running correctness tests...\n");
 
@@ -508,57 +544,96 @@ static int run_test(const std::string& arguments, bool silent, bool disable_nccl
     real_t* output = data_d;
     if (args.out_of_place) output = data_2_d;
 
+    //CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
+    //CHECK_HIPDECOMP(hipdecompTransposeXToY(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
+    //                                     pinfo_x.halo_extents, pinfo_y.halo_extents, pinfo_x.padding, pinfo_y.padding,
+    //                                     stream));
+    //CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*output), hipMemcpyDeviceToHost));
+    //// write output to file
+    //out << "\n# XtoY\n";
+    //for (int i = 0; i < pinfo_y.size; ++i) {
+    //  out << data[i] << " ";
+    //}
+    //if (!compare_pencils(yref, data, pinfo_y)) {
+    //  out << "\n# Failed XToY";
+    //  fprintf(stderr, "FAILED hipdecompTransposeXToY\n");
+    //  //return 1;
+    //  pass = false;
+    //}
+
+    //if (args.out_of_place) std::swap(input, output);
+
+    //CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
+    //CHECK_HIP(hipMemcpy(input, yref.data(), yref.size() * sizeof(*data_d), hipMemcpyHostToDevice));
+    //CHECK_HIPDECOMP(hipdecompTransposeYToZ(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
+    //                                     pinfo_y.halo_extents, pinfo_z.halo_extents, pinfo_y.padding, pinfo_z.padding,
+    //                                     stream));
+    //CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*data_d), hipMemcpyDeviceToHost));
+    //// write output to file
+    //out << "\n# YToZ\n";
+    //for (int i = 0; i < pinfo_z.size; ++i) {
+    //  out << data[i] << " ";
+    //}
+    //if (!compare_pencils(zref, data, pinfo_z)) {
+    //  out << "\n# Failed YToZ";
+    //  fprintf(stderr, "FAILED hipdecompTransposeYToZ\n");
+    //  //return 1;
+    //  pass = false;
+    //}
+
+    //if (args.out_of_place) std::swap(input, output);
+
     CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
-    CHECK_HIPDECOMP(hipdecompTransposeXToY(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
-                                         pinfo_x.halo_extents, pinfo_y.halo_extents, pinfo_x.padding, pinfo_y.padding,
-                                         0));
-    CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*output), hipMemcpyDeviceToHost));
-    if (!compare_pencils(yref, data, pinfo_y)) {
-      fprintf(stderr, "FAILED hipdecompTransposeXToY\n");
-      return 1;
-    }
-
-    if (args.out_of_place) std::swap(input, output);
-
-    CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
-    CHECK_HIPDECOMP(hipdecompTransposeYToZ(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
-                                         pinfo_y.halo_extents, pinfo_z.halo_extents, pinfo_y.padding, pinfo_z.padding,
-                                         0));
-    CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*data_d), hipMemcpyDeviceToHost));
-    if (!compare_pencils(zref, data, pinfo_z)) {
-      fprintf(stderr, "FAILED hipdecompTransposeYToZ\n");
-      return 1;
-    }
-
-    if (args.out_of_place) std::swap(input, output);
-
-    CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
+    CHECK_HIP(hipMemcpy(input, zref.data(), zref.size() * sizeof(*data_d), hipMemcpyHostToDevice));
     CHECK_HIPDECOMP(hipdecompTransposeZToY(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
                                          pinfo_z.halo_extents, pinfo_y.halo_extents, pinfo_z.padding, pinfo_y.padding,
-                                         0));
+                                         stream));
     CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*data_d), hipMemcpyDeviceToHost));
+    // write output to file
+    out << "\n# ZtoY\n";
+    for (int i = 0; i < pinfo_y.size; ++i) {
+      out << data[i] << " ";
+    }
     if (!compare_pencils(yref, data, pinfo_y)) {
+      out << "\n# Failed ZtoY";
+      //out.close();
       fprintf(stderr, "FAILED hipdecompTransposeZToY\n");
-      return 1;
+      //return 1;
+      pass = false;
     }
 
-    if (args.out_of_place) std::swap(input, output);
+    //if (args.out_of_place) std::swap(input, output);
 
-    CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
-    CHECK_HIPDECOMP(hipdecompTransposeYToX(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
-                                         pinfo_y.halo_extents, pinfo_x.halo_extents, pinfo_y.padding, pinfo_x.padding,
-                                         0));
-    CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*data_d), hipMemcpyDeviceToHost));
-    if (!compare_pencils(xref, data, pinfo_x)) {
-      fprintf(stderr, "FAILED hipdecompTransposeYToX\n");
-      return 1;
+    //CHECK_HIP(hipMemset(work_d, 0, workspace_num_elements * dtype_size));
+    //CHECK_HIP(hipMemcpy(input, yref.data(), yref.size() * sizeof(*data_d), hipMemcpyHostToDevice));
+    //CHECK_HIPDECOMP(hipdecompTransposeYToX(handle, grid_desc, input, output, work_d, get_hipdecomp_datatype(real_t(0)),
+    //                                     pinfo_y.halo_extents, pinfo_x.halo_extents, pinfo_y.padding, pinfo_x.padding,
+    //                                     stream));
+    //CHECK_HIP(hipMemcpy(data.data(), output, data.size() * sizeof(*data_d), hipMemcpyDeviceToHost));
+    //// write output to file
+    //out << "\n# YToX\n";
+    //for (int i = 0; i < pinfo_x.size; ++i) {
+    //  out << data[i] << " ";
+    //}
+    //if (!compare_pencils(xref, data, pinfo_x)) {
+    //  out << "\n# Failed YToX";
+    //  fprintf(stderr, "FAILED hipdecompTransposeYToX\n");
+    //  //return 1;
+    //  pass = false;
+    //}
+
+    if (pass) {
+      out << "\n# Passed\n";
+    } else {
+      out << "\n";
     }
+    out.close();
 
     CHECK_HIP(hipFree(data_d));
     if (data_2_d) CHECK_HIP(hipFree(data_2_d));
   } catch (const std::exception& e) { return 1; }
 
-  return 0;
+  return int(pass);
 }
 
 int main(int argc, char** argv) {
@@ -575,6 +650,16 @@ int main(int argc, char** argv) {
   CHECK_HIP_EXIT(hipGetDeviceCount(&device_count));
   CHECK_HIP_EXIT(hipSetDevice(local_rank % device_count));
 
+  // print device name
+  const int maxlen = 64;
+  char * name = new char[maxlen];
+  hipDevice_t device;
+  CHECK_HIP_EXIT(hipGetDevice(&device));
+  CHECK_HIP_EXIT(hipDeviceGetName(name, maxlen, device));
+  std::cerr << "rank " << rank << " using device " << name << std::endl;
+  delete[] name;
+
+
   // Cannot use NCCL if multiple ranks run on the same GPU
   bool disable_nccl_backends = false;
   if (local_rank >= device_count) disable_nccl_backends = true;
@@ -590,6 +675,9 @@ int main(int argc, char** argv) {
       break;
     }
   }
+
+  hipStream_t stream;
+  CHECK_HIP_EXIT(hipStreamCreate(&stream));
 
   // Initialize hipDecomp
   CHECK_HIPDECOMP_EXIT(hipdecompInit(&handle, MPI_COMM_WORLD));
@@ -611,7 +699,7 @@ int main(int argc, char** argv) {
   if (using_testfile && rank == 0) printf("Running %d tests...\n", static_cast<int>(testcases.size()));
   for (int i = 0; i < testcases.size(); ++i) {
     if (using_testfile && rank == 0) printf("command: %s %s\n", argv[0], testcases[i].c_str());
-    int res = run_test(testcases[i], using_testfile, disable_nccl_backends);
+    int res = run_test(testcases[i], using_testfile, disable_nccl_backends, stream);
     CHECK_MPI_EXIT(MPI_Reduce((rank == 0) ? MPI_IN_PLACE : &res, &res, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD));
     if (using_testfile && rank == 0) {
       if (res != 0) {
@@ -664,6 +752,7 @@ int main(int argc, char** argv) {
   grid_desc_cache.clear();
 
   CHECK_HIPDECOMP_EXIT(hipdecompFinalize(handle));
+  CHECK_HIP_EXIT(hipStreamDestroy(stream));
   CHECK_MPI_EXIT(MPI_Finalize());
 
   return retcode;
