@@ -23,6 +23,20 @@
 
 namespace hipdecomp {
 
+void hipdecomp_fix_hiptensor_strides(float *input, float *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream) {
+  hipdecomp_fix_hiptensor_strides_dispatch(input, output, extent_out, strides_out, stream);
+}
+void hipdecomp_fix_hiptensor_strides(double *input, double *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream) {
+  hipdecomp_fix_hiptensor_strides_dispatch(input, output, extent_out, strides_out, stream);
+}
+void hipdecomp_fix_hiptensor_strides(std::complex<float> *input, std::complex<float> *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream) {
+  hipdecomp_fix_hiptensor_strides_dispatch(input, output, extent_out, strides_out, stream);
+}
+void hipdecomp_fix_hiptensor_strides(std::complex<double> *input, std::complex<double> *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream) {
+  hipdecomp_fix_hiptensor_strides_dispatch(input, output, extent_out, strides_out, stream);
+}
+
+
 void hipdecomp_batched_d2d_memcpy_3d(hipdecompBatchedD2DMemcpy3DParams<float>& params, hipStream_t stream) {
   hipdecomp_batched_d2d_memcpy_3d_nd_dispatch(params, stream);
 }

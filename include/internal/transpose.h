@@ -78,49 +78,106 @@ template <typename T>
 static void localPermute(const hipdecompHandle_t handle, const std::array<int64_t, 3>& extent_in,
                          const std::array<int32_t, 3>& order_out, const std::array<int64_t, 3>& strides_in,
                          const std::array<int64_t, 3>& strides_out, T* input, T* output, hipStream_t stream) {
+  // hiptensorLoggerSetLevel(HIPTENSOR_LOG_LEVEL_API_TRACE);
+  
   // hipTensor only supports float for permutations
   // handle this by adding an axis to the tensor that stays in place
   // hiptensorDataType_t hiptensor_type = getHiptensorDataType<T>();
   hiptensorDataType_t hiptensor_type = getHiptensorDataType<float>();
 
   // Extend arrays from 3 to 4 dimensions
-  std::array<int32_t, 4> order_in_ext{0, 1, 2, 3};
-  std::array<int32_t, 4> order_out_ext;
-  std::array<int64_t, 4> extent_in_ext;
-  std::array<int64_t, 4> extent_out_ext;
-  std::array<int64_t, 4> strides_in_ext;
-  std::array<int64_t, 4> strides_out_ext;
+  //std::array<int32_t, 4> order_in_ext{0, 1, 2, 3};
+  //std::array<int32_t, 4> order_out_ext;
+  //std::array<int64_t, 4> extent_in_ext;
+  //std::array<int64_t, 4> extent_out_ext;
+  //std::array<int64_t, 4> strides_in_ext;
+  //std::array<int64_t, 4> strides_out_ext;
 
-  const int num_extra = sizeof(T) / sizeof(float);
+  //const int num_extra = sizeof(T) / sizeof(float);
 
-  extent_in_ext[0] = num_extra;
-  order_out_ext[0] = 0;
-  strides_in_ext[0] = 1;
-  strides_out_ext[0] = 1;
+  //extent_in_ext[0] = num_extra;
+  //order_out_ext[0] = 0;
+  //strides_in_ext[0] = 1;
+  //strides_out_ext[0] = 1;
 
+  //for (int i = 0; i < 3; ++i) {
+  //  extent_in_ext[i + 1] = extent_in[i];
+  //  // new axis is axis 0, so need to add one to each input value
+  //  order_out_ext[i + 1] = order_out[i] + 1;
+  //  // size of new axis is num_extra, so input strides have to be multiplied by this
+  //  strides_in_ext[i + 1] = strides_in[i] * num_extra;
+  //  strides_out_ext[i + 1] = strides_out[i] * num_extra;
+  //}
+
+  //for (int i = 0; i < 4; ++i) {
+  //  extent_out_ext[i] = extent_in_ext[order_out_ext[i]];
+  //  if (extent_out_ext[i] == 0) return;
+  //}
+
+  std::array<int32_t, 3> order_in{0, 1, 2}; 
+  std::array<int64_t, 3> extent_out;
   for (int i = 0; i < 3; ++i) {
-    extent_in_ext[i + 1] = extent_in[i];
-    // new axis is axis 0, so need to add one to each input value
-    order_out_ext[i + 1] = order_out[i] + 1;
-    // size of new axis is num_extra, so input strides have to be multiplied by this
-    strides_in_ext[i + 1] = strides_in[i] * num_extra;
-    strides_out_ext[i + 1] = strides_out[i] * num_extra;
+    extent_out[i] = extent_in[order_out[i]];
+    if (extent_out[i] == 0) return;
   }
 
-  for (int i = 0; i < 4; ++i) {
-    extent_out_ext[i] = extent_in_ext[order_out_ext[i]];
-    if (extent_out_ext[i] == 0) return;
+  int rank;
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  CHECK_HIP(hipDeviceSynchronize());
+  if (rank == 0) {
+    std::cout << "called localpermute" << std::endl;
+    int n = extent_in[0] * extent_in[1] * extent_in[2];
+    std::cout << "pointer diff: " << std::abs(output - input) << ","<< "size: " << n << "\n";
+    std::cout << "START input ";
+    for (int i =0; i < n; ++i) {
+      std::cout << input[i] << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "START output ";
+    for (int i =0; i < n; ++i) {
+      std::cout << output[i] << " ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "extent_in extent_out order_out strides_in strides_out\n";
+    for (int i = 0; i < 3; i++ ) {
+      std::cout << extent_in[i] << " " << extent_out[i] << " " << order_out[i] << " " << strides_in[i] << " "  << strides_out[i] << std::endl;
+    }
   }
+
+  auto& strides_in_ext = strides_in;
+  auto& strides_out_ext = strides_out;
+  auto& extent_in_ext = extent_in;
+  auto& extent_out_ext = extent_out;
+  auto& order_in_ext = order_in;
+  auto& order_out_ext = order_out;
+
 
   auto strides_in_ptr = anyNonzeros(strides_in_ext) ? strides_in_ext.data() : nullptr;
   auto strides_out_ptr = anyNonzeros(strides_out_ext) ? strides_out_ext.data() : nullptr;
 
+  // check if we need to fix hiptensor output: only if output strides are non-contiguous with extent_out
+  bool need_fix = (strides_out[0] != 1) || (strides_out[1] != extent_out[0]) || (strides_out[2] != extent_out[0] * extent_out[1]);
+  if (rank == 0 ) std::cout << "Need fix is " << need_fix << std::endl;
+
+  // create extra buffer for output so we can fix later
+  const int64_t size = extent_out[0] * extent_out[1] * extent_out[2];
+  T *buffer;
+  if (need_fix) {
+    CHECK_HIP(hipMalloc(&buffer, size * sizeof(T)));
+    // ToDo: check if we actually need any data from original output buffer as passed to localPermute
+    // CHECK_HIP(hipMemset(buffer, 0, size * sizeof(T)));
+    CHECK_HIP(hipMemcpyAsync(buffer, output, size * sizeof(T), hipMemcpyDeviceToDevice, stream));
+  } else {
+    buffer = output;
+  }
+
   hiptensorTensorDescriptor_t desc_in;
-  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 4, extent_in_ext.data(),
+  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_in, 3, extent_in_ext.data(),
                                                   strides_in_ptr, hiptensor_type, getAlignment(input)));
   hiptensorTensorDescriptor_t desc_out;
-  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_out, 4, extent_out_ext.data(),
-                                                  strides_out_ptr, hiptensor_type, getAlignment(output)));
+  CHECK_HIPTENSOR(hiptensorCreateTensorDescriptor(handle->hiptensor_handle, &desc_out, 3, extent_out_ext.data(),
+                                                  strides_out_ptr, hiptensor_type, getAlignment(buffer)));
 
   hiptensorOperationDescriptor_t desc_op;
   CHECK_HIPTENSOR(hiptensorCreatePermutation(handle->hiptensor_handle, &desc_op, desc_in, order_in_ext.data(),
@@ -134,12 +191,40 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   // this works as long as the scalar value is one
   // T one(1);
   float one(1.0f);
-  CHECK_HIPTENSOR(hiptensorPermute(handle->hiptensor_handle, plan, &one, input, output, stream));
 
+  CHECK_HIPTENSOR(hiptensorPermute(handle->hiptensor_handle, plan, &one, input, buffer, stream));
+  if (need_fix) {
+    if (rank == 0) {
+      CHECK_HIP(hipDeviceSynchronize());
+      int n = extent_in[0] * extent_in[1] * extent_in[2];
+      std::cout << "INT   output ";
+      for (int i =0; i < n; ++i) {
+        std::cout << buffer[i] << " ";
+      }
+      std::cout << std::endl;
+    }
+    hipdecomp_fix_hiptensor_strides(buffer, output, extent_out, strides_out, stream);
+    CHECK_HIP(hipFree(buffer));
+  }
+  
   CHECK_HIPTENSOR(hiptensorDestroyTensorDescriptor(desc_in));
   CHECK_HIPTENSOR(hiptensorDestroyTensorDescriptor(desc_out));
   CHECK_HIPTENSOR(hiptensorDestroyOperationDescriptor(desc_op));
   CHECK_HIPTENSOR(hiptensorDestroyPlan(plan));
+  CHECK_HIP(hipDeviceSynchronize());
+  if (rank == 0) {
+    int n = extent_in[0] * extent_in[1] * extent_in[2];
+    //std::cout << "END   input ";
+    //for (int i =0; i < n; ++i) {
+    //  std::cout << input[i] << " ";
+    //}
+    //std::cout << std::endl;
+    std::cout << "END   output ";
+    for (int i =0; i < n; ++i) {
+      std::cout << output[i] << " ";
+    }
+    std::cout << std::endl;
+  }
 }
 
 #else
@@ -320,6 +405,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
   // Adjust pointers to handle special cases
   bool direct_pack = false;
   bool direct_transpose = false;
+
   if (splits_a.size() == 1) {
     // Special cases for single rank communicators
     if (orders_equal) {
@@ -389,6 +475,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
       }
     }
   }
+
 
   // Setup communication info
   std::vector<comm_count_t> send_offsets(splits_a.size());

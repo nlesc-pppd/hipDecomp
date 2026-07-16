@@ -50,6 +50,34 @@ __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
 }
 #endif
 
+template <typename T>
+__launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
+    void hipdecomp_fix_hiptensor_strides_k(const T *input, T *output, const int64_t extent_a, const int64_t extent_b, const int64_t extent_c,
+                                         const int64_t stride_a, const int64_t stride_b, const int64_t stride_c) {
+
+  const int64_t size = extent_a * extent_b * extent_c;
+  const int64_t input_idx = threadIdx.x + blockIdx.x * blockDim.x;
+  if (input_idx >= size) return;
+
+  const int64_t i = input_idx % extent_a;
+  const int64_t j = (input_idx / extent_a) % extent_b;
+  const int64_t k = input_idx / (extent_a * extent_b);
+  const int64_t output_idx = i * stride_a + j * stride_b + k * stride_c;
+
+  if (output_idx >= size) return;
+
+  // printf("KERNEL %li %li\n", output_idx, input_idx);
+
+  output[output_idx] = input[input_idx];
+}
+
+template <typename T>
+void hipdecomp_fix_hiptensor_strides_dispatch(const T *input, T *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream) {
+   const int64_t size = extent_out[0] * extent_out[1] * extent_out[2];
+   hipdecomp_fix_hiptensor_strides_k<<<(size + HIPDECOMP_HIP_NTHREADS - 1) / HIPDECOMP_HIP_NTHREADS, HIPDECOMP_HIP_NTHREADS>>>(input, output, extent_out[0], extent_out[1], extent_out[2], strides_out[0], strides_out[1], strides_out[2]);
+   CHECK_HIP_LAUNCH();
+}
+
 template <int src_nd, int dest_nd, typename T>
 __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
     void hipdecomp_batched_d2d_memcpy_3d_k(hipdecompBatchedD2DMemcpy3DParams<T> params, int blocks_per_copy) {

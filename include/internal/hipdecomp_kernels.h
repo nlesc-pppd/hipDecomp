@@ -41,6 +41,12 @@ void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<fl
 void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<double>>& params, hipStream_t stream);
 #endif
 
+void hipdecomp_fix_hiptensor_strides(float *input, float *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream);
+void hipdecomp_fix_hiptensor_strides(double *input, double *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream);
+void hipdecomp_fix_hiptensor_strides(std::complex<float> *input, std::complex<float> *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream);
+void hipdecomp_fix_hiptensor_strides(std::complex<double> *input, std::complex<double> *output, const std::array<int64_t, 3>& extent_out, const std::array<int64_t, 3>& strides_out, hipStream_t stream);
+
+
 #define HIPDECOMP_BATCHED_D2D_3D_PARAM_CAPACITY 56
 template <typename T> struct hipdecompBatchedD2DMemcpy3DParams {
   int ncopies;
