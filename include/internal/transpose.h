@@ -121,12 +121,15 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
     if (extent_out[i] == 0) return;
   }
 
+  // int n = extent_in[0] * extent_in[1] * extent_in[2];
+  // n *= 2;
+  int n = extent_out[2] * strides_out[2];
+
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   CHECK_HIP(hipDeviceSynchronize());
   if (rank == 0) {
     std::cout << "called localpermute" << std::endl;
-    int n = extent_in[0] * extent_in[1] * extent_in[2];
     std::cout << "pointer diff: " << std::abs(output - input) << ","<< "size: " << n << "\n";
     std::cout << "START input ";
     for (int i =0; i < n; ++i) {
@@ -161,13 +164,14 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   if (rank == 0 ) std::cout << "Need fix is " << need_fix << std::endl;
 
   // create extra buffer for output so we can fix later
-  const int64_t size = extent_out[0] * extent_out[1] * extent_out[2];
+  // const int64_t size = extent_out[0] * extent_out[1] * extent_out[2];
+  const int64_t size = n;
   T *buffer;
   if (need_fix) {
     CHECK_HIP(hipMalloc(&buffer, size * sizeof(T)));
     // ToDo: check if we actually need any data from original output buffer as passed to localPermute
-    // CHECK_HIP(hipMemset(buffer, 0, size * sizeof(T)));
-    CHECK_HIP(hipMemcpyAsync(buffer, output, size * sizeof(T), hipMemcpyDeviceToDevice, stream));
+    CHECK_HIP(hipMemset(buffer, 0, size * sizeof(T)));
+    // CHECK_HIP(hipMemcpyAsync(buffer, output, size * sizeof(T), hipMemcpyDeviceToDevice, stream));
   } else {
     buffer = output;
   }
@@ -196,7 +200,6 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   if (need_fix) {
     if (rank == 0) {
       CHECK_HIP(hipDeviceSynchronize());
-      int n = extent_in[0] * extent_in[1] * extent_in[2];
       std::cout << "INT   output ";
       for (int i =0; i < n; ++i) {
         std::cout << buffer[i] << " ";
@@ -213,7 +216,6 @@ static void localPermute(const hipdecompHandle_t handle, const std::array<int64_
   CHECK_HIPTENSOR(hiptensorDestroyPlan(plan));
   CHECK_HIP(hipDeviceSynchronize());
   if (rank == 0) {
-    int n = extent_in[0] * extent_in[1] * extent_in[2];
     //std::cout << "END   input ";
     //for (int i =0; i < n; ++i) {
     //  std::cout << input[i] << " ";

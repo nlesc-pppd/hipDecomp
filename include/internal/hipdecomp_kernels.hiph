@@ -55,7 +55,8 @@ __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
     void hipdecomp_fix_hiptensor_strides_k(const T *input, T *output, const int64_t extent_a, const int64_t extent_b, const int64_t extent_c,
                                          const int64_t stride_a, const int64_t stride_b, const int64_t stride_c) {
 
-  const int64_t size = extent_a * extent_b * extent_c;
+  // const int64_t size = extent_a * extent_b * extent_c;
+  const int64_t size = extent_c * stride_c;
   const int64_t input_idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (input_idx >= size) return;
 
