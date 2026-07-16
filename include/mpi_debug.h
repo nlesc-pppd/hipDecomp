@@ -18,7 +18,7 @@ static int MPI_Send(const void *buf, int count, MPI_Datatype datatype, int dest,
              int tag, MPI_Comm comm) {
     std::stringstream ss;
     const int rank = get_rank();
-    std::cerr << "rank " << rank << "  MPI_Send\n";
+    std::cout << "rank " << rank << "  MPI_Send\n";
     return ::MPI_Send(buf, count, datatype, dest, tag, comm);
 
 }
@@ -27,7 +27,7 @@ static int MPI_Recv(void *buf, int count, MPI_Datatype datatype, int source,
              int tag, MPI_Comm comm, MPI_Status *status) {
     std::stringstream ss;
     const int rank = get_rank();
-    std::cerr << "rank " << rank << " MPI_Recv\n";
+    std::cout << "rank " << rank << " MPI_Recv\n";
     return ::MPI_Recv(buf, count, datatype, source, tag, comm, status);
 
 }
@@ -42,7 +42,7 @@ static int MPI_Isend(const T *buf, int count, MPI_Datatype datatype, int dest,
         ss << " " << buf[i];
     }
     ss << "\n";
-    std::cerr << ss.str();
+    // std::cout << ss.str();
     return ::MPI_Isend(buf, count, datatype, dest, tag, comm, request);
 
 }
@@ -53,7 +53,7 @@ static int MPI_Irecv(T *buf, int count, MPI_Datatype datatype, int source,
     std::stringstream ss;
     const int rank = get_rank();
     ss << "rank " << rank << " MPI_Irecv (call); count=" << count << "\n";
-    std::cerr << ss.str();
+    std::cout << ss.str();
     return ::MPI_Irecv(buf, count, datatype, source, tag ,comm, request);
 }
 
@@ -67,13 +67,13 @@ static void print_irecv(T *buf, int count) {
         ss << " " << buf[i];
     }
     ss << "\n";
-    std::cerr << ss.str();
+    // std::cout << ss.str();
 }
 
 static int MPI_Alltoall(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
                  void *recvbuf, int recvcount, MPI_Datatype recvtype, MPI_Comm comm) {
     const int rank = get_rank();
-    std::cerr << "rank " << rank << " MPI_Alltoall\n";
+    std::cout << "rank " << rank << " MPI_Alltoall\n";
     return ::MPI_Alltoall(sendbuf, sendcount, sendtype, recvbuf, recvcount, recvtype, comm);
 
 }
@@ -82,14 +82,14 @@ static int MPI_Alltoallv(const void *sendbuf, const int sendcounts[], const int 
                   void *recvbuf, const int recvcounts[], const int rdispls[], MPI_Datatype recvtype,
                   MPI_Comm comm) {
     const int rank = get_rank();
-    std::cerr << "rank " << rank << " MPI_AlltoAllv\n";
+    std::cout << "rank " << rank << " MPI_AlltoAllv\n";
     return ::MPI_Alltoallv(sendbuf, sendcounts, sdispls, sendtype, recvbuf, recvcounts, rdispls, recvtype, comm);
 }
 
 static int MPI_Bcast(void *buffer, int count, MPI_Datatype datatype, int root,
               MPI_Comm comm) {
     const int rank = get_rank();
-    std::cerr << "rank " << rank << " MPI_Bcast\n";
+    std::cout << "rank " << rank << " MPI_Bcast\n";
     return ::MPI_Bcast(buffer, count, datatype, root, comm);
 
 }
