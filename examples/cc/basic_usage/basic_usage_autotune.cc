@@ -27,7 +27,6 @@
 #include <mpi.h>
 
 #include <hip/hip_runtime.h>
-#include <hiptensor/hiptensor.hpp>
 
 #include "hipdecomp.h"
 
@@ -90,8 +89,6 @@ __global__ void initialize_pencil(double* data, hipdecompPencilInfo_t pinfo) {
 }
 
 int main(int argc, char** argv) {
-  hiptensorLoggerSetLevel(HIPTENSOR_LOG_LEVEL_ERROR);
-
   // Initialize MPI and start up hipDecomp
   CHECK_MPI_EXIT(MPI_Init(nullptr, nullptr));
   int rank, nranks;
