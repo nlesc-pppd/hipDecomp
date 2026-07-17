@@ -38,4 +38,20 @@ void hipdecomp_batched_d2d_memcpy_3d(hipdecompBatchedD2DMemcpy3DParams<std::comp
   hipdecomp_batched_d2d_memcpy_3d_nd_dispatch(params, stream);
 }
 
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<float>& params, hipStream_t stream) {
+  hipdecomp_permute_d2d_dispatch(params, stream);
+}
+
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<double>& params, hipStream_t stream) {
+  hipdecomp_permute_d2d_dispatch(params, stream);
+}
+
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<std::complex<float>>& params, hipStream_t stream) {
+  hipdecomp_permute_d2d_dispatch(params, stream);
+}
+
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<std::complex<double>>& params, hipStream_t stream) {
+  hipdecomp_permute_d2d_dispatch(params, stream);
+}
+
 } // namespace hipdecomp

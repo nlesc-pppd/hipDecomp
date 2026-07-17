@@ -199,6 +199,33 @@ void hipdecomp_batched_d2d_memcpy_3d_nd_dispatch(const hipdecompBatchedD2DMemcpy
   CHECK_HIP_LAUNCH();
 }
 
+template <typename T> __global__ void hipdecomp_permute_d2d_k(hipdecompPermuteD2DParams<T> params, size_t size) {
+  const size_t idx = threadIdx.x + blockDim.x * blockIdx.x;
+  if (idx >= size) return;
+
+  size_t indices[3];
+  indices[0] = idx % params.extent_in[0];
+  indices[1] = (idx / params.extent_in[0]) % params.extent_in[1];
+  indices[2] = idx / (params.extent_in[0] * params.extent_in[1]);
+
+  const size_t input_idx =
+      indices[0] * params.strides_in[0] + indices[1] * params.strides_in[1] + indices[2] * params.strides_in[2];
+  const size_t output_idx = indices[params.order_out[0]] * params.strides_out[0] +
+                            indices[params.order_out[1]] * params.strides_out[1] +
+                            indices[params.order_out[2]] * params.strides_out[2];
+
+  params.output[output_idx] = params.input[input_idx];
+}
+
+template <typename T>
+void hipdecomp_permute_d2d_dispatch(const hipdecompPermuteD2DParams<T>& params, hipStream_t stream) {
+  const size_t size = params.extent_in[0] * params.extent_in[1] * params.extent_in[2];
+
+  hipdecomp_permute_d2d_k<<<(size + HIPDECOMP_HIP_NTHREADS - 1) / HIPDECOMP_HIP_NTHREADS, HIPDECOMP_HIP_NTHREADS, 0,
+                            stream>>>(params, size);
+  CHECK_HIP_LAUNCH();
+}
+
 } // namespace hipdecomp
 
 #endif // HIPDECOMP_KERNELS_CUH

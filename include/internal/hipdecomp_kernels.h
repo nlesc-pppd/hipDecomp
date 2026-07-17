@@ -58,6 +58,20 @@ void hipdecomp_batched_d2d_memcpy_3d(hipdecompBatchedD2DMemcpy3DParams<std::comp
 void hipdecomp_batched_d2d_memcpy_3d(hipdecompBatchedD2DMemcpy3DParams<std::complex<double>>& params,
                                      hipStream_t stream);
 
+template <typename T> struct hipdecompPermuteD2DParams {
+  T* input;
+  T* output;
+  size_t extent_in[3];
+  size_t order_out[3];
+  size_t strides_in[3];
+  size_t strides_out[3];
+};
+
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<float>& params, hipStream_t stream);
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<double>& params, hipStream_t stream);
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<std::complex<float>>& params, hipStream_t stream);
+void hipdecomp_permute_d2d(hipdecompPermuteD2DParams<std::complex<double>>& params, hipStream_t stream);
+
 } // namespace hipdecomp
 
 #endif // HIPDECOMP_KERNELS_H

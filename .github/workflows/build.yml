@@ -45,7 +45,7 @@ jobs:
         uses: loostrum/rocm-installer@v0.2
         with:
           version: ${{ env.rocm-version }}
-          packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev hipfort-dev hiptensor-dev rccl-dev rocprofiler-sdk-roctx
+          packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev hipfort-dev rccl-dev rocprofiler-sdk-roctx
 
       - name: Install OpenMPI
         if: steps.cache-openmpi.outputs.cache-hit != 'true'
