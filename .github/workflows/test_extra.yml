@@ -1,0 +1,64 @@
+name: "AMD GPU - extra tests"
+
+# These tests take a long time, only run when requested by user
+on:
+  workflow_dispatch:
+
+jobs:
+  test-amd:
+    name: "AMD GPU - extra tests"
+    runs-on: hx370
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check GPU visibility
+        run: amd-smi list
+
+      - name: Build hipDecomp
+        run: |
+          arch=$(rocm_agent_enumerator | head -n 1)
+          cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
+          make -C build -j
+
+      - name: Prepare test environment
+        run: |
+          pip3 install --user --break-system-packages pyyaml
+          cp tests/test_runner.py build/tests/
+          cp tests/test_config.yaml build/tests
+
+      - name: Run C++ transpose tests
+        run: |
+          cd build/tests
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_halo_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_padding_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_mix_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_ac_cc
+
+      - name: Run Fortran transpose tests
+        run: |
+          cd build/tests
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_halo_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_padding_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_gdimdist_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_mix_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" transpose_test_ac_fortran
+
+      - name: Run C++ halo tests
+        run: |
+          cd build/tests
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_halomix_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_padding_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_gdimdist_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_mix_cc
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_ac_cc
+
+      - name: Run Fortran halo tests
+        run: |
+          cd build/tests
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_halomix_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_padding_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_gdimdist_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_mix_fortran
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" halo_test_ac_fortran
+
