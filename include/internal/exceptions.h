@@ -42,10 +42,6 @@
   do {                                                                                                                 \
     throw hipdecomp::HipError(__FILE__, __LINE__, msg);                                                                \
   } while (false)
-#define THROW_HIPTENSOR_ERROR(msg)                                                                                     \
-  do {                                                                                                                 \
-    throw hipdecomp::HiptensorError(__FILE__, __LINE__, msg);                                                          \
-  } while (false)
 #define THROW_MPI_ERROR(msg)                                                                                           \
   do {                                                                                                                 \
     throw hipdecomp::MpiError(__FILE__, __LINE__, msg);                                                                \
@@ -108,13 +104,6 @@ public:
   HipError(const char* file, int line, const char* extra_info = nullptr)
       : BaseException(file, line, "HIP error.", extra_info) {};
   hipdecompResult_t getResult() const override { return HIPDECOMP_RESULT_HIP_ERROR; }
-};
-
-class HiptensorError : public BaseException {
-public:
-  HiptensorError(const char* file, int line, const char* extra_info = nullptr)
-      : BaseException(file, line, "hipTENSOR error.", extra_info) {};
-  hipdecompResult_t getResult() const override { return HIPDECOMP_RESULT_HIPTENSOR_ERROR; }
 };
 
 class MpiError : public BaseException {

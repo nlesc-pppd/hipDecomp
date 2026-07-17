@@ -75,9 +75,6 @@ endif()
 # Get RCCL library
 find_package(rccl REQUIRED)
 
-# Get hipTensor library
-find_package(hiptensor REQUIRED)
-
 if (HIPDECOMP_ENABLE_ROCSHMEM)
   # Get ROCSHMEM library
   find_package(rocshmem REQUIRED)
@@ -117,7 +114,6 @@ target_include_directories(hipdecomp
 
 target_link_libraries(hipdecomp PUBLIC hip::host hip::device)
 target_link_libraries(hipdecomp PUBLIC MPI::MPI_CXX)
-target_link_libraries(hipdecomp PRIVATE hiptensor)
 target_link_libraries(hipdecomp PRIVATE rccl)
 if (HIPDECOMP_ENABLE_ROCTX)
   target_link_libraries(hipdecomp PRIVATE rocprofiler-sdk-roctx)

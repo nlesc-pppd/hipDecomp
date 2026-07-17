@@ -25,11 +25,6 @@
 
 #include <hip/hip_runtime.h>
 #include <hipfft/hipfft.h>
-#if HIP_VERSION_MAJOR < 7
-#include <hiptensor/hiptensor.hpp>
-#else
-#include <hiptensor/hiptensor.h>
-#endif
 #include <mpi.h>
 #include <rccl/rccl.h>
 
@@ -57,14 +52,6 @@
   do {                                                                                                                 \
     hipError_t err = hipGetLastError();                                                                                \
     if (hipSuccess != err) { throw hipdecomp::HipError(__FILE__, __LINE__, hipGetErrorString(err)); }                  \
-  } while (false)
-
-#define CHECK_HIPTENSOR(call)                                                                                          \
-  do {                                                                                                                 \
-    hiptensorStatus_t err = call;                                                                                      \
-    if (HIPTENSOR_STATUS_SUCCESS != err) {                                                                             \
-      throw hipdecomp::HiptensorError(__FILE__, __LINE__, hiptensorGetErrorString(err));                               \
-    }                                                                                                                  \
   } while (false)
 
 #define CHECK_NCCL(call)                                                                                               \
