@@ -469,7 +469,7 @@ module transpose_HIPDECOMP_DOUBLE_COMPLEX_mod
 
     work_d = 0
     CHECK_HIPDECOMP(hipdecompTransposeXToY(handle, grid_desc, input, output, work_d, dtype, pinfo_x%halo_extents, pinfo_y%halo_extents, pinfo_x%padding, pinfo_y%padding))
-    call flat_copy_dtoh(output, data, pinfo_x%size)
+    call flat_copy_dtoh(output, data, pinfo_y%size)
     if (compare_pencils(yref, data, pinfo_y)) then
       print*, "FAILED hipdecompTranposeXToY"
       res = 1
@@ -488,7 +488,7 @@ module transpose_HIPDECOMP_DOUBLE_COMPLEX_mod
 
     work_d = 0
     CHECK_HIPDECOMP(hipdecompTransposeYToZ(handle, grid_desc, input, output, work_d, dtype, pinfo_y%halo_extents, pinfo_z%halo_extents, pinfo_y%padding, pinfo_z%padding))
-    call flat_copy_dtoh(output, data, pinfo_y%size)
+    call flat_copy_dtoh(output, data, pinfo_z%size)
     if (compare_pencils(zref, data, pinfo_z)) then
       print*, "FAILED hipdecompTranposeYToZ"
       res = 1
@@ -507,7 +507,7 @@ module transpose_HIPDECOMP_DOUBLE_COMPLEX_mod
 
     work_d = 0
     CHECK_HIPDECOMP(hipdecompTransposeZToY(handle, grid_desc, input, output, work_d, dtype, pinfo_z%halo_extents, pinfo_y%halo_extents, pinfo_z%padding, pinfo_y%padding))
-    call flat_copy_dtoh(output, data, pinfo_z%size)
+    call flat_copy_dtoh(output, data, pinfo_y%size)
     if (compare_pencils(yref, data, pinfo_y)) then
       print*, "FAILED hipdecompTranposeZToY"
       res = 1
@@ -526,7 +526,7 @@ module transpose_HIPDECOMP_DOUBLE_COMPLEX_mod
 
     work_d = 0
     CHECK_HIPDECOMP(hipdecompTransposeYToX(handle, grid_desc, input, output, work_d, dtype, pinfo_y%halo_extents, pinfo_x%halo_extents, pinfo_y%padding, pinfo_x%padding))
-    call flat_copy_dtoh(output, data, pinfo_y%size)
+    call flat_copy_dtoh(output, data, pinfo_x%size)
     if (compare_pencils(xref, data, pinfo_x)) then
       print*, "FAILED hipdecompTranposeYToX"
       res = 1
