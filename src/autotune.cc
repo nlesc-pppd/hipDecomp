@@ -24,9 +24,8 @@
 #include <hip/hip_runtime.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
-#include <nvshmemx.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
 #endif
 
 #include "hipdecomp.h"
@@ -94,7 +93,7 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
 
   std::vector<hipdecompTransposeCommBackend_t> comm_backend_list;
   bool need_nccl = false;
-  bool need_nvshmem = false;
+  bool need_rocshmem = false;
   if (autotune_comm) {
     comm_backend_list = {HIPDECOMP_TRANSPOSE_COMM_MPI_P2P, HIPDECOMP_TRANSPOSE_COMM_MPI_P2P_PL,
                          HIPDECOMP_TRANSPOSE_COMM_MPI_A2A};
@@ -103,18 +102,18 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
       comm_backend_list.push_back(HIPDECOMP_TRANSPOSE_COMM_NCCL_PL);
       need_nccl = true;
     }
-#ifdef ENABLE_NVSHMEM
-    if (!options->disable_nvshmem_backends) {
-      comm_backend_list.push_back(HIPDECOMP_TRANSPOSE_COMM_NVSHMEM);
-      comm_backend_list.push_back(HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL);
-      need_nvshmem = true;
+#ifdef ENABLE_ROCSHMEM
+    if (!options->disable_rocshmem_backends) {
+      comm_backend_list.push_back(HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM);
+      comm_backend_list.push_back(HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL);
+      need_rocshmem = true;
     }
 #endif
   } else {
     comm_backend_list = {grid_desc->config.transpose_comm_backend};
     if (transposeBackendRequiresNccl(comm_backend_list[0])) { need_nccl = true; }
-#ifdef ENABLE_NVSHMEM
-    if (transposeBackendRequiresNvshmem(comm_backend_list[0])) { need_nvshmem = true; }
+#ifdef ENABLE_ROCSHMEM
+    if (transposeBackendRequiresRocshmem(comm_backend_list[0])) { need_rocshmem = true; }
 #endif
   }
 
@@ -137,7 +136,7 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
   void* data = nullptr;
   void* data2 = nullptr;
   void* work = nullptr;
-  void* work_nvshmem = nullptr;
+  void* work_rocshmem = nullptr;
 
   int64_t data_sz = 0;
   int64_t work_sz = 0;
@@ -208,36 +207,36 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
       }
     }
 
-    // For nvshmem, buffers must be the same size. Find global maximums.
+    // For rocshmem, buffers must be the same size. Find global maximums.
     CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &work_sz_new, 1, MPI_LONG_LONG_INT, MPI_MAX, handle->mpi_comm));
 
     if (work_sz_new > work_sz) {
       work_sz = work_sz_new;
-      if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-        if (work && work != work_nvshmem) {
+      if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+        if (work && work != work_rocshmem) {
           auto tmp = grid_desc->config.transpose_comm_backend;
           grid_desc->config.transpose_comm_backend =
               (need_nccl) ? HIPDECOMP_TRANSPOSE_COMM_NCCL : HIPDECOMP_TRANSPOSE_COMM_MPI_P2P;
           CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work));
           grid_desc->config.transpose_comm_backend = tmp;
         }
-        // Temporarily set backend to force nvshmem_malloc path in hipdecompMalloc/Free
+        // Temporarily set backend to force rocshmem_malloc path in hipdecompMalloc/Free
         auto tmp = grid_desc->config.transpose_comm_backend;
-        grid_desc->config.transpose_comm_backend = HIPDECOMP_TRANSPOSE_COMM_NVSHMEM;
-        if (work_nvshmem) CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_nvshmem));
-        CHECK_HIPDECOMP(hipdecompMalloc(handle, grid_desc, reinterpret_cast<void**>(&work_nvshmem), work_sz));
+        grid_desc->config.transpose_comm_backend = HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM;
+        if (work_rocshmem) CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_rocshmem));
+        CHECK_HIPDECOMP(hipdecompMalloc(handle, grid_desc, reinterpret_cast<void**>(&work_rocshmem), work_sz));
         grid_desc->config.transpose_comm_backend = tmp;
 
-        // Check if there is enough memory for separate non-NVSHMEM allocated work buffer
+        // Check if there is enough memory for separate non-ROCSHMEM allocated work buffer
         auto ret = hipMalloc(&work, work_sz);
         if (ret == hipErrorOutOfMemory) {
           if (handle->rank == 0) {
-            printf("HIPDECOMP:WARN: Cannot allocate separate workspace for non-NVSHMEM backends during "
-                   "autotuning. Using NVSHMEM allocated workspace for all backends, which may cause issues "
+            printf("HIPDECOMP:WARN: Cannot allocate separate workspace for non-ROCSHMEM backends during "
+                   "autotuning. Using ROCSHMEM allocated workspace for all backends, which may cause issues "
                    "for some MPI implementations. See documentation for more details and suggested workarounds.\n");
           }
-          work = work_nvshmem;
+          work = work_rocshmem;
           hipGetLastError(); // Reset HIP error state
         } else {
           CHECK_HIP(hipFree(work));
@@ -268,19 +267,17 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
     MPI_Comm col_comm;
     CHECK_MPI(MPI_Comm_split(handle->mpi_comm, color_col, handle->rank, &col_comm));
     setCommInfo(handle, grid_desc, col_comm, HIPDECOMP_COMM_COL);
-    if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-      nvshmem_team_config_t tmp;
-      nvshmem_team_split_2d(NVSHMEM_TEAM_WORLD, grid_desc->config.pdims[1], &tmp, 0,
-                            &grid_desc->row_comm_info.nvshmem_team, &tmp, 0, &grid_desc->col_comm_info.nvshmem_team);
+    if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+      rocshmemTeamSplit2D(handle, grid_desc);
 #endif
     }
 
     for (auto& comm : comm_backend_list) {
       grid_desc->config.transpose_comm_backend = comm;
       void* w = work;
-#ifdef ENABLE_NVSHMEM
-      if (transposeBackendRequiresNvshmem(comm)) { w = work_nvshmem; }
+#ifdef ENABLE_ROCSHMEM
+      if (transposeBackendRequiresRocshmem(comm)) { w = work_rocshmem; }
 #endif
 
       // Reset performance samples
@@ -445,30 +442,30 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
     // Destroy test communicators
     CHECK_MPI(MPI_Comm_free(&grid_desc->row_comm_info.mpi_comm));
     CHECK_MPI(MPI_Comm_free(&grid_desc->col_comm_info.mpi_comm));
-    if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-      nvshmem_team_destroy(grid_desc->row_comm_info.nvshmem_team);
-      nvshmem_team_destroy(grid_desc->col_comm_info.nvshmem_team);
-      grid_desc->row_comm_info.nvshmem_team = NVSHMEM_TEAM_INVALID;
-      grid_desc->col_comm_info.nvshmem_team = NVSHMEM_TEAM_INVALID;
+    if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+      rocshmem::rocshmem_team_destroy(grid_desc->row_comm_info.rocshmem_team);
+      rocshmem::rocshmem_team_destroy(grid_desc->col_comm_info.rocshmem_team);
+      grid_desc->row_comm_info.rocshmem_team = rocshmem::ROCSHMEM_TEAM_INVALID;
+      grid_desc->col_comm_info.rocshmem_team = rocshmem::ROCSHMEM_TEAM_INVALID;
 #endif
     }
   }
 
   // Free test data and workspace
-  if (need_nvshmem) {
-    if (work != work_nvshmem) {
+  if (need_rocshmem) {
+    if (work != work_rocshmem) {
       auto tmp = grid_desc->config.transpose_comm_backend;
       grid_desc->config.transpose_comm_backend =
           (need_nccl) ? HIPDECOMP_TRANSPOSE_COMM_NCCL : HIPDECOMP_TRANSPOSE_COMM_MPI_P2P;
       CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work));
       grid_desc->config.transpose_comm_backend = tmp;
     }
-#ifdef ENABLE_NVSHMEM
-    // Temporarily set backend to force nvshmem_malloc path in hipdecompMalloc/Free
+#ifdef ENABLE_ROCSHMEM
+    // Temporarily set backend to force rocshmem_malloc path in hipdecompMalloc/Free
     auto tmp = grid_desc->config.transpose_comm_backend;
-    grid_desc->config.transpose_comm_backend = HIPDECOMP_TRANSPOSE_COMM_NVSHMEM;
-    CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_nvshmem));
+    grid_desc->config.transpose_comm_backend = HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM;
+    CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_rocshmem));
     grid_desc->config.transpose_comm_backend = tmp;
 #endif
   } else {
@@ -536,25 +533,25 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
 
   std::vector<hipdecompHaloCommBackend_t> comm_backend_list;
   bool need_nccl = false;
-  bool need_nvshmem = false;
+  bool need_rocshmem = false;
   if (autotune_comm) {
     comm_backend_list = {HIPDECOMP_HALO_COMM_MPI, HIPDECOMP_HALO_COMM_MPI_BLOCKING};
     if (!options->disable_nccl_backends) {
       comm_backend_list.push_back(HIPDECOMP_HALO_COMM_NCCL);
       need_nccl = true;
     }
-#ifdef ENABLE_NVSHMEM
-    if (!options->disable_nvshmem_backends) {
-      comm_backend_list.push_back(HIPDECOMP_HALO_COMM_NVSHMEM);
-      comm_backend_list.push_back(HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING);
-      need_nvshmem = true;
+#ifdef ENABLE_ROCSHMEM
+    if (!options->disable_rocshmem_backends) {
+      comm_backend_list.push_back(HIPDECOMP_HALO_COMM_ROCSHMEM);
+      comm_backend_list.push_back(HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING);
+      need_rocshmem = true;
     }
 #endif
   } else {
     comm_backend_list = {grid_desc->config.halo_comm_backend};
     if (haloBackendRequiresNccl(comm_backend_list[0])) { need_nccl = true; }
-#ifdef ENABLE_NVSHMEM
-    if (haloBackendRequiresNvshmem(comm_backend_list[0])) { need_nvshmem = true; }
+#ifdef ENABLE_ROCSHMEM
+    if (haloBackendRequiresRocshmem(comm_backend_list[0])) { need_rocshmem = true; }
 #endif
   }
 
@@ -571,7 +568,7 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
 
   void* data = nullptr;
   void* work = nullptr;
-  void* work_nvshmem = nullptr;
+  void* work_rocshmem = nullptr;
 
   int64_t data_sz = 0;
   int64_t work_sz = 0;
@@ -618,35 +615,35 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
       CHECK_HIP(hipMalloc(&data, data_sz));
     }
 
-    // For nvshmem, buffers must be the same size. Find global maximums.
+    // For rocshmem, buffers must be the same size. Find global maximums.
     CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &work_sz_new, 1, MPI_LONG_LONG_INT, MPI_MAX, handle->mpi_comm));
 
     if (work_sz_new > work_sz) {
       work_sz = work_sz_new;
-      if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-        if (work && work != work_nvshmem) {
+      if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+        if (work && work != work_rocshmem) {
           auto tmp = grid_desc->config.halo_comm_backend;
           grid_desc->config.halo_comm_backend = (need_nccl) ? HIPDECOMP_HALO_COMM_NCCL : HIPDECOMP_HALO_COMM_MPI;
           CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work));
           grid_desc->config.halo_comm_backend = tmp;
         }
-        // Temporarily set backend to force nvshmem_malloc path in hipdecompMalloc/Free
+        // Temporarily set backend to force rocshmem_malloc path in hipdecompMalloc/Free
         auto tmp = grid_desc->config.halo_comm_backend;
-        grid_desc->config.halo_comm_backend = HIPDECOMP_HALO_COMM_NVSHMEM;
-        if (work_nvshmem) CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_nvshmem));
-        CHECK_HIPDECOMP(hipdecompMalloc(handle, grid_desc, reinterpret_cast<void**>(&work_nvshmem), work_sz));
+        grid_desc->config.halo_comm_backend = HIPDECOMP_HALO_COMM_ROCSHMEM;
+        if (work_rocshmem) CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_rocshmem));
+        CHECK_HIPDECOMP(hipdecompMalloc(handle, grid_desc, reinterpret_cast<void**>(&work_rocshmem), work_sz));
         grid_desc->config.halo_comm_backend = tmp;
 
-        // Check if there is enough memory for separate non-NVSHMEM allocated work buffer
+        // Check if there is enough memory for separate non-ROCSHMEM allocated work buffer
         auto ret = hipMalloc(&work, work_sz);
         if (ret == hipErrorOutOfMemory) {
           if (handle->rank == 0) {
-            printf("HIPDECOMP:WARN: Cannot allocate separate workspace for non-NVSHMEM backends during "
-                   "autotuning. Using NVSHMEM allocated workspace for all backends, which may cause issues "
+            printf("HIPDECOMP:WARN: Cannot allocate separate workspace for non-ROCSHMEM backends during "
+                   "autotuning. Using ROCSHMEM allocated workspace for all backends, which may cause issues "
                    "for some MPI implementations. See documentation for more details and suggested workarounds.\n");
           }
-          work = work_nvshmem;
+          work = work_rocshmem;
           hipGetLastError(); // Reset HIP error state
         } else {
           CHECK_HIP(hipFree(work));
@@ -675,11 +672,9 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
     MPI_Comm col_comm;
     CHECK_MPI(MPI_Comm_split(handle->mpi_comm, color_col, handle->rank, &col_comm));
     setCommInfo(handle, grid_desc, col_comm, HIPDECOMP_COMM_COL);
-    if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-      nvshmem_team_config_t tmp;
-      nvshmem_team_split_2d(NVSHMEM_TEAM_WORLD, grid_desc->config.pdims[1], &tmp, 0,
-                            &grid_desc->row_comm_info.nvshmem_team, &tmp, 0, &grid_desc->col_comm_info.nvshmem_team);
+    if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+      rocshmemTeamSplit2D(handle, grid_desc);
 #endif
     }
 
@@ -688,8 +683,8 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
       grid_desc->config.halo_comm_backend = comm;
       void* d = data;
       void* w = work;
-#ifdef ENABLE_NVSHMEM
-      if (haloBackendRequiresNvshmem(comm)) { w = work_nvshmem; }
+#ifdef ENABLE_ROCSHMEM
+      if (haloBackendRequiresRocshmem(comm)) { w = work_rocshmem; }
 #endif
 
       // Reset performance samples
@@ -789,29 +784,29 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
     // Destroy test communicators
     CHECK_MPI(MPI_Comm_free(&grid_desc->row_comm_info.mpi_comm));
     CHECK_MPI(MPI_Comm_free(&grid_desc->col_comm_info.mpi_comm));
-    if (need_nvshmem) {
-#ifdef ENABLE_NVSHMEM
-      nvshmem_team_destroy(grid_desc->row_comm_info.nvshmem_team);
-      nvshmem_team_destroy(grid_desc->col_comm_info.nvshmem_team);
-      grid_desc->row_comm_info.nvshmem_team = NVSHMEM_TEAM_INVALID;
-      grid_desc->col_comm_info.nvshmem_team = NVSHMEM_TEAM_INVALID;
+    if (need_rocshmem) {
+#ifdef ENABLE_ROCSHMEM
+      rocshmem::rocshmem_team_destroy(grid_desc->row_comm_info.rocshmem_team);
+      rocshmem::rocshmem_team_destroy(grid_desc->col_comm_info.rocshmem_team);
+      grid_desc->row_comm_info.rocshmem_team = rocshmem::ROCSHMEM_TEAM_INVALID;
+      grid_desc->col_comm_info.rocshmem_team = rocshmem::ROCSHMEM_TEAM_INVALID;
 #endif
     }
   }
 
   // Free test data and workspace
-  if (need_nvshmem) {
-    if (work != work_nvshmem) {
+  if (need_rocshmem) {
+    if (work != work_rocshmem) {
       auto tmp = grid_desc->config.halo_comm_backend;
       grid_desc->config.halo_comm_backend = (need_nccl) ? HIPDECOMP_HALO_COMM_NCCL : HIPDECOMP_HALO_COMM_MPI;
       CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work));
       grid_desc->config.halo_comm_backend = tmp;
     }
-#ifdef ENABLE_NVSHMEM
-    // Temporarily set backend to force nvshmem_malloc path in hipdecompMalloc/Free
+#ifdef ENABLE_ROCSHMEM
+    // Temporarily set backend to force rocshmem_malloc path in hipdecompMalloc/Free
     auto tmp = grid_desc->config.halo_comm_backend;
-    grid_desc->config.halo_comm_backend = HIPDECOMP_HALO_COMM_NVSHMEM;
-    CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_nvshmem));
+    grid_desc->config.halo_comm_backend = HIPDECOMP_HALO_COMM_ROCSHMEM;
+    CHECK_HIPDECOMP(hipdecompFree(handle, grid_desc, work_rocshmem));
     grid_desc->config.halo_comm_backend = tmp;
 #endif
   } else {

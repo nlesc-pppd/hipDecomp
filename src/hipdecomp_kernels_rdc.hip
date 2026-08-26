@@ -23,24 +23,49 @@
 
 namespace hipdecomp {
 
-#ifdef ENABLE_NVSHMEM
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<float>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+#ifdef ENABLE_ROCSHMEM
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<float>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<double>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<double>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<float>>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<float>>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<double>>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<double>>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem(void* dest, const void* source, size_t nbytes, int pe, hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_k<<<1, 1, 0, stream>>>(dest, source, nbytes, pe);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem_nbi(void* dest, const void* source, size_t nbytes, int pe, hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_nbi_k<<<1, 1, 0, stream>>>(dest, source, nbytes, pe);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_quiet(hipStream_t stream) {
+  hipdecomp_rocshmem_quiet_k<<<1, 1, 0, stream>>>();
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_sync_all(hipStream_t stream) {
+  hipdecomp_rocshmem_sync_all_k<<<1, 1, 0, stream>>>();
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_team_sync(rocshmem::rocshmem_team_t team, hipStream_t stream) {
+  hipdecomp_rocshmem_team_sync_k<<<1, 1, 0, stream>>>(team);
   CHECK_HIP_LAUNCH();
 }
 #endif

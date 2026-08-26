@@ -26,8 +26,8 @@ module hipdecomp
     enumerator :: HIPDECOMP_TRANSPOSE_COMM_MPI_A2A = 3
     enumerator :: HIPDECOMP_TRANSPOSE_COMM_NCCL = 4
     enumerator :: HIPDECOMP_TRANSPOSE_COMM_NCCL_PL = 5
-    enumerator :: HIPDECOMP_TRANSPOSE_COMM_NVSHMEM = 6
-    enumerator :: HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL = 7
+    enumerator :: HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM = 6
+    enumerator :: HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL = 7
   end enum
 
   ! enum for hipDecomp halo backend options
@@ -35,8 +35,8 @@ module hipdecomp
     enumerator :: HIPDECOMP_HALO_COMM_MPI = 1
     enumerator :: HIPDECOMP_HALO_COMM_MPI_BLOCKING = 2
     enumerator :: HIPDECOMP_HALO_COMM_NCCL = 3
-    enumerator :: HIPDECOMP_HALO_COMM_NVSHMEM = 4
-    enumerator :: HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING = 5
+    enumerator :: HIPDECOMP_HALO_COMM_ROCSHMEM = 4
+    enumerator :: HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING = 5
   end enum
 
   ! enum for hipDecomp grid autotune setting
@@ -63,7 +63,7 @@ module hipdecomp
     enumerator :: HIPDECOMP_RESULT_HIPTENSOR_ERROR = 5
     enumerator :: HIPDECOMP_RESULT_MPI_ERROR = 6
     enumerator :: HIPDECOMP_RESULT_NCCL_ERROR = 7
-    enumerator :: HIPDECOMP_RESULT_NVSHMEM_ERROR = 8
+    enumerator :: HIPDECOMP_RESULT_ROCSHMEM_ERROR = 8
     enumerator :: HIPDECOMP_RESULT_NVML_ERROR = 9
   end enum
 
@@ -105,7 +105,7 @@ module hipdecomp
     integer(c_int32_t) :: dtype ! datatype to use during autotuning
     logical(c_bool) :: allow_uneven_decompositions ! flag to control whether autotuning allows uneven decompositions (based on gdims_dist if provided, gdims otherwise)
     logical(c_bool) :: disable_nccl_backends ! flag to disable NCCL backend options during autotuning
-    logical(c_bool) :: disable_nvshmem_backends ! flag to disable NVSHMEM backend options during autotuning
+    logical(c_bool) :: disable_rocshmem_backends ! flag to disable ROCSHMEM backend options during autotuning
     real(c_double) :: skip_threshold ! threshold used to skip testing slow configurations
 
     ! Transpose-specific options

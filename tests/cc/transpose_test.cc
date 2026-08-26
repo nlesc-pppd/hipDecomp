@@ -355,7 +355,7 @@ hipdecompHandle_t handle;
 std::unordered_map<hipdecompTransposeCommBackend_t, hipdecompGridDesc_t> grid_desc_cache;
 std::tuple<int, real_t*, size_t> workspace{-1, nullptr, 0};
 
-// Cache a single grid descriptor per backend type. This keeps NCCL/NVSHMEM initialized between tests for
+// Cache a single grid descriptor per backend type. This keeps NCCL/ROCSHMEM initialized between tests for
 // better throughput.
 static void cache_grid_desc(const hipdecompGridDesc_t& grid_desc, hipdecompTransposeCommBackend_t backend) {
   if (grid_desc_cache.count(backend) != 0) {

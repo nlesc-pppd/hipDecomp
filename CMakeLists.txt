@@ -10,7 +10,7 @@ endif()
 # User-defined build options
 option(HIPDECOMP_BUILD_FORTRAN "Build Fortran bindings" ON)
 option(HIPDECOMP_ENABLE_ROCTX "Enable ROCTx ranges" ON)
-#option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
+option(HIPDECOMP_ENABLE_ROCSHMEM "Enable ROCSHMEM" OFF)
 option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
 option(HIPDECOMP_ENABLE_COVERAGE "Enable code coverage in HIP and C++ sources" OFF)
 
@@ -138,44 +138,10 @@ if (HIPDECOMP_ENABLE_ROCTX)
   target_compile_definitions(hipdecomp PRIVATE ENABLE_ROCTX)
 endif()
 
-# if (HIPDECOMP_ENABLE_NVSHMEM)
-#   target_compile_definitions(hipdecomp PRIVATE ENABLE_NVSHMEM)
-#   target_include_directories(hipdecomp
-#     PRIVATE
-#     ${NVSHMEM_INCLUDE_DIR}
-#   )
-
-#   # Get NVSHMEM version from header
-#   if (EXISTS ${NVSHMEM_INCLUDE_DIR}/non_abi/nvshmem_version.h)
-#     file(READ ${NVSHMEM_INCLUDE_DIR}/non_abi/nvshmem_version.h NVSHMEM_VERSION_RAW)
-#   elseif (EXISTS ${NVSHMEM_INCLUDE_DIR}/nvshmem_version.h)
-#     file(READ ${NVSHMEM_INCLUDE_DIR}/nvshmem_version.h NVSHMEM_VERSION_RAW)
-#   else()
-#     file(READ ${NVSHMEM_INCLUDE_DIR}/common/nvshmem_version.h NVSHMEM_VERSION_RAW)
-#   endif()
-#   string(REGEX MATCH "NVSHMEM_VENDOR_MAJOR_VERSION ([0-9]*)" _ ${NVSHMEM_VERSION_RAW})
-#   list(APPEND NVSHMEM_VERSION ${CMAKE_MATCH_1})
-#   string(REGEX MATCH "NVSHMEM_VENDOR_MINOR_VERSION ([0-9]*)" _ ${NVSHMEM_VERSION_RAW})
-#   list(APPEND NVSHMEM_VERSION ${CMAKE_MATCH_1})
-#   list(JOIN NVSHMEM_VERSION "." NVSHMEM_VERSION)
-
-#   if (NVSHMEM_VERSION VERSION_LESS "2.5")
-#     target_link_libraries(hipdecomp PRIVATE ${NVSHMEM_LIBRARY_DIR}/libnvshmem.a)
-#   else()
-#     target_link_libraries(hipdecomp PRIVATE ${NVSHMEM_LIBRARY_DIR}/libnvshmem_host.so)
-#     target_link_libraries(hipdecomp PRIVATE ${NVSHMEM_LIBRARY_DIR}/libnvshmem_device.a)
-#   endif()
-
-#   if (NVSHMEM_VERSION VERSION_LESS "2.7")
-#     # NVSHMEM versions before 2.7 will export NCCL symbols erroneously, need to define this flag
-#     target_compile_definitions(hipdecomp PRIVATE NVSHMEM_USE_NCCL)
-#     target_link_libraries(hipdecomp PUBLIC -L${NVHPC_CUDA_LIBRARY_DIR}/stubs -lcuda)
-#   endif()
-
-#   if (NVSHMEM_VERSION VERSION_LESS "2.11")
-#     target_link_libraries(hipdecomp PUBLIC -L${NVHPC_CUDA_LIBRARY_DIR}/stubs -lnvidia-ml)
-#   endif()
-# endif()
+if (HIPDECOMP_ENABLE_ROCSHMEM)
+  target_compile_definitions(hipdecomp PRIVATE ENABLE_ROCSHMEM)
+  target_link_libraries(hipdecomp PRIVATE roc::rocshmem)
+endif()
 
 set_target_properties(hipdecomp PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/hipdecomp.h)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/include/hipdecomp.h ${CMAKE_BINARY_DIR}/include/hipdecomp.h)

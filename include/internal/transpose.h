@@ -38,8 +38,8 @@ namespace hipdecomp {
 
 static inline bool isTransposeCommPipelined(hipdecompTransposeCommBackend_t commType) {
   return (commType == HIPDECOMP_TRANSPOSE_COMM_NCCL_PL ||
-#ifdef ENABLE_NVSHMEM
-          commType == HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL ||
+#ifdef ENABLE_ROCSHMEM
+          commType == HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL ||
 #endif
           commType == HIPDECOMP_TRANSPOSE_COMM_MPI_P2P_PL);
 }
@@ -149,11 +149,11 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
   T* o2 = work + pinfo_a.size;
   T* o3 = output;
 
-  if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend)) {
+  if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend)) {
     auto max_pencil_size_a = getGlobalMaxPencilSize(handle, grid_desc, ax_a);
     o2 = work + max_pencil_size_a;
-    // Record event at start of transpose op for NVSHMEM team synchronization
-    CHECK_HIP(hipEventRecord(grid_desc->nvshmem_sync_event, stream));
+    // Record event at start of transpose op for ROCSHMEM team synchronization
+    CHECK_HIP(hipEventRecord(grid_desc->rocshmem_sync_event, stream));
   }
 
   hipdecompTransposePerformanceSample* current_sample = nullptr;
@@ -221,10 +221,10 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
       // Note: Disabling special cases for in-place pipelined communication to avoid
       // handing more complex input/output data dependencies. Can revisit.
       enable = false;
-    } else if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend)) {
-      // Note: For NVSHMEM, disabling special cases to ensure communication is always staged
-      // in to workspace (which should be nvshmem allocated). Can revisit support for input/output
-      // arrays allocated with nvshmem.
+    } else if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend)) {
+      // Note: For ROCSHMEM, disabling special cases to ensure communication is always staged
+      // in to workspace (which should be rocshmem allocated). Can revisit support for input/output
+      // arrays allocated with rocshmem.
       enable = false;
     } else if (transposeBackendRequiresMpi(grid_desc->config.transpose_comm_backend) &&
                (isManagedPointer(input) || isManagedPointer(output))) {
@@ -251,7 +251,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
   std::vector<comm_count_t> send_counts(splits_a.size());
   std::vector<comm_count_t> recv_counts(splits_a.size());
 
-  std::vector<comm_count_t> recv_offsets_nvshmem(splits_a.size());
+  std::vector<comm_count_t> recv_offsets_rocshmem(splits_a.size());
   size_t rank_offset = offsets_b[comm_rank];
   for (int i = 0; i < splits_a.size(); ++i) {
     send_offsets[i] = offsets_a[i] * shape_g_a[ax_b] * shape_g_a[ax_c];
@@ -259,7 +259,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
     send_counts[i] = splits_a[i] * shape_g_a[ax_b] * shape_g_a[ax_c];
     recv_counts[i] = splits_b[i] * shape_g_b[ax_a] * shape_g_b[ax_c];
 
-    recv_offsets_nvshmem[i] = rank_offset * shape_g_a[ax_c] * splits_a[i];
+    recv_offsets_rocshmem[i] = rank_offset * shape_g_a[ax_c] * splits_a[i];
   }
 
   bool data_transposed = false;
@@ -475,7 +475,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
   if (splits_a.size() > 1) {
     if (!pipelined) {
       hipdecompAlltoall(handle, grid_desc, o1, send_counts, send_offsets, o2, recv_counts, recv_offsets,
-                        recv_offsets_nvshmem, comm_axis, stream, current_sample);
+                        recv_offsets_rocshmem, comm_axis, stream, current_sample);
     }
   } else {
     o2 = o1;
@@ -515,7 +515,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
       }
 
       if (pipelined) {
-        bool nvshmem_synced = false;
+        bool rocshmem_synced = false;
         for (int j = 0; j < splits_b.size(); ++j) {
           int src_rank, dst_rank;
           getAlltoallPeerRanks(grid_desc, comm_axis, j, src_rank, dst_rank);
@@ -545,7 +545,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
 
           if (o2 != o1) {
             hipdecompAlltoallPipelined(handle, grid_desc, o1, send_counts, send_offsets, o2, recv_counts, recv_offsets,
-                                       recv_offsets_nvshmem, comm_axis, src_ranks, dst_ranks, stream, nvshmem_synced,
+                                       recv_offsets_rocshmem, comm_axis, src_ranks, dst_ranks, stream, rocshmem_synced,
                                        current_sample);
           }
 
@@ -610,7 +610,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
         if (i > 0) { strides_out[i] = strides_out[i - 1] * extents_h[i - 1]; }
       }
 
-      bool nvshmem_synced = false;
+      bool rocshmem_synced = false;
       for (int j = 0; j < splits_b.size(); ++j) {
         int src_rank, dst_rank;
         getAlltoallPeerRanks(grid_desc, comm_axis, j, src_rank, dst_rank);
@@ -641,7 +641,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
 
           if (o2 != o1) {
             hipdecompAlltoallPipelined(handle, grid_desc, o1, send_counts, send_offsets, o2, recv_counts, recv_offsets,
-                                       recv_offsets_nvshmem, comm_axis, src_ranks, dst_ranks, stream, nvshmem_synced,
+                                       recv_offsets_rocshmem, comm_axis, src_ranks, dst_ranks, stream, rocshmem_synced,
                                        current_sample);
           }
         }
@@ -666,7 +666,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
     }
   } else {
     // Unpack
-    bool nvshmem_synced = false;
+    bool rocshmem_synced = false;
     int memcpy_count = 0;
     hipdecompBatchedD2DMemcpy3DParams<T> memcpy_params;
     for (int j = 0; j < splits_a.size(); ++j) {
@@ -699,7 +699,7 @@ static void hipdecompTranspose_(int ax, int dir, const hipdecompHandle_t handle,
 
         if (o2 != o1) {
           hipdecompAlltoallPipelined(handle, grid_desc, o1, send_counts, send_offsets, o2, recv_counts, recv_offsets,
-                                     recv_offsets_nvshmem, comm_axis, src_ranks, dst_ranks, stream, nvshmem_synced,
+                                     recv_offsets_rocshmem, comm_axis, src_ranks, dst_ranks, stream, rocshmem_synced,
                                      current_sample);
         }
       }

@@ -24,9 +24,8 @@
 #include <hip/hip_runtime.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
-#include <nvshmemx.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
 #endif
 
 #include "internal/checks.h"
@@ -66,18 +65,18 @@ static inline bool canUseMpiAlltoall(const std::vector<comm_count_t>& send_count
   return true;
 }
 
-#ifdef ENABLE_NVSHMEM
-#define HIPDECOMP_NVSHMEM_CHUNK_SZ (static_cast<size_t>(1024 * 1024 * 1024))
-#define HIPDECOMP_NVSHMEM_INTRAGROUP_SYNC_FREQ 8 // max number of intra-group transfers to schedule between team syncs
+#ifdef ENABLE_ROCSHMEM
+#define HIPDECOMP_ROCSHMEM_CHUNK_SZ (static_cast<size_t>(1024 * 1024 * 1024))
+#define HIPDECOMP_ROCSHMEM_INTRAGROUP_SYNC_FREQ 8 // max number of intra-group transfers to schedule between team syncs
 template <typename T>
 static void
-nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& grid_desc, T* send_buff,
-                 const std::vector<comm_count_t>& send_counts, const std::vector<comm_count_t>& send_offsets,
-                 T* recv_buff, const std::vector<comm_count_t>& recv_counts,
-                 const std::vector<comm_count_t>& recv_offsets, hipdecompCommAxis comm_axis, hipStream_t stream) {
+rocshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& grid_desc, T* send_buff,
+                  const std::vector<comm_count_t>& send_counts, const std::vector<comm_count_t>& send_offsets,
+                  T* recv_buff, const std::vector<comm_count_t>& recv_counts,
+                  const std::vector<comm_count_t>& recv_offsets, hipdecompCommAxis comm_axis, hipStream_t stream) {
   auto comm_info = (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info : grid_desc->col_comm_info;
   auto comm = comm_info.mpi_comm;
-  auto team = comm_info.nvshmem_team;
+  auto team = comm_info.rocshmem_team;
   int self_rank = comm_info.rank;
 
   // Event dependency on external stream for intra-group transfers
@@ -86,12 +85,12 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
     CHECK_HIP(hipStreamWaitEvent(handle->streams[i], grid_desc->events[0], 0));
   }
 
-  // Using hipEventSynchronize + barrier instead of nvshmemx_team_sync_on_stream for lower latency
-  CHECK_HIP(hipEventSynchronize(grid_desc->nvshmem_sync_event));
+  // Using hipEventSynchronize + barrier instead of hipdecomp_rocshmem_team_sync for lower latency
+  CHECK_HIP(hipEventSynchronize(grid_desc->rocshmem_sync_event));
   CHECK_MPI(MPI_Barrier(comm));
-  // nvshmemx_team_sync_on_stream(team, stream);
+  // hipdecomp_rocshmem_team_sync(team, stream);
 
-  hipdecompNvshmemA2AParams<T> params;
+  hipdecompRocshmemA2AParams<T> params;
 
   // Inter-group transfers (non-blocking)
   bool need_quiet = false;
@@ -102,7 +101,7 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
     int src_rank, dst_rank;
     getAlltoallPeerRanks(grid_desc, comm_axis, i, src_rank, dst_rank);
     int dst_rank_global = getGlobalRank(handle, grid_desc, comm_axis, dst_rank);
-    if (nvshmem_ptr(recv_buff, dst_rank_global)) { continue; }
+    if (rocshmem::rocshmem_ptr(recv_buff, dst_rank_global)) { continue; }
 
     params.send_offsets[count] = send_offsets[dst_rank];
     params.recv_offsets[count] = recv_offsets[dst_rank];
@@ -110,16 +109,16 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
     params.peer_ranks[count] = dst_rank_global;
     count++;
 
-    if (count == HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY) {
+    if (count == HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY) {
       params.ntransfers = count;
-      hipdecomp_nvshmem_alltoallv(params, stream);
+      hipdecomp_rocshmem_alltoallv(params, stream);
       count = 0;
       need_quiet = true;
     }
   }
   if (count != 0) {
     params.ntransfers = count;
-    hipdecomp_nvshmem_alltoallv(params, stream);
+    hipdecomp_rocshmem_alltoallv(params, stream);
     need_quiet = true;
   }
 
@@ -129,19 +128,19 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
     int src_rank, dst_rank;
     getAlltoallPeerRanks(grid_desc, comm_axis, i, src_rank, dst_rank);
     int dst_rank_global = getGlobalRank(handle, grid_desc, comm_axis, dst_rank);
-    if (nvshmem_ptr(recv_buff, dst_rank_global)) {
+    if (rocshmem::rocshmem_ptr(recv_buff, dst_rank_global)) {
 
       if (comm_info.ngroups == 1 && handle->device_p2p_ce_count == 1 &&
-          count % HIPDECOMP_NVSHMEM_INTRAGROUP_SYNC_FREQ == 0) {
-        // For single group, single P2P CE (e.g. NVSwitch), synchronize NVSHMEM team every
-        // HIPDECOMP_NVSHMEM_INTRAGROUP_SYNC_FREQ transfers This helps reduce CE contention due to accumulation of
+          count % HIPDECOMP_ROCSHMEM_INTRAGROUP_SYNC_FREQ == 0) {
+        // For single group, single P2P CE (e.g. NVSwitch), synchronize ROCSHMEM team every
+        // HIPDECOMP_ROCSHMEM_INTRAGROUP_SYNC_FREQ transfers This helps reduce CE contention due to accumulation of
         // jitter.
         for (int i = 0; i < handle->device_p2p_ce_count; ++i) {
           CHECK_HIP(hipEventRecord(grid_desc->events[0], handle->streams[i]));
           CHECK_HIP(hipStreamWaitEvent(handle->streams[handle->device_p2p_ce_count], grid_desc->events[0], 0));
         }
 
-        nvshmemx_team_sync_on_stream(team, handle->streams[handle->device_p2p_ce_count]);
+        hipdecomp_rocshmem_team_sync(team, handle->streams[handle->device_p2p_ce_count]);
 
         CHECK_HIP(hipEventRecord(grid_desc->events[0], handle->streams[handle->device_p2p_ce_count]));
         for (int i = 0; i < handle->device_p2p_ce_count; ++i) {
@@ -149,14 +148,14 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
         }
       }
 
-      // Use host call for direct P2P accessible entries
-      // Need to chunk host API calls due to 2 GiB limitation in API
+      // Use kernel-launch wrapper for direct P2P accessible entries
+      // Keep chunking (inherited from the equivalent NVSHMEM host API's 2 GiB limitation) for parity
       size_t send_bytes = send_counts[dst_rank] * sizeof(T);
-      size_t nchunks = (send_bytes + HIPDECOMP_NVSHMEM_CHUNK_SZ - 1) / HIPDECOMP_NVSHMEM_CHUNK_SZ;
+      size_t nchunks = (send_bytes + HIPDECOMP_ROCSHMEM_CHUNK_SZ - 1) / HIPDECOMP_ROCSHMEM_CHUNK_SZ;
       for (size_t j = 0; j < nchunks; ++j) {
-        nvshmemx_putmem_on_stream(recv_buff + recv_offsets[dst_rank] + j * (HIPDECOMP_NVSHMEM_CHUNK_SZ / sizeof(T)),
-                                  send_buff + send_offsets[dst_rank] + j * (HIPDECOMP_NVSHMEM_CHUNK_SZ / sizeof(T)),
-                                  std::min(HIPDECOMP_NVSHMEM_CHUNK_SZ, send_bytes - j * HIPDECOMP_NVSHMEM_CHUNK_SZ),
+        hipdecomp_rocshmem_putmem(recv_buff + recv_offsets[dst_rank] + j * (HIPDECOMP_ROCSHMEM_CHUNK_SZ / sizeof(T)),
+                                  send_buff + send_offsets[dst_rank] + j * (HIPDECOMP_ROCSHMEM_CHUNK_SZ / sizeof(T)),
+                                  std::min(HIPDECOMP_ROCSHMEM_CHUNK_SZ, send_bytes - j * HIPDECOMP_ROCSHMEM_CHUNK_SZ),
                                   dst_rank_global, handle->streams[count % handle->device_p2p_ce_count]);
       }
       count++;
@@ -173,12 +172,12 @@ nvshmemAlltoallV(const hipdecompHandle_t& handle, const hipdecompGridDesc_t& gri
     CHECK_HIP(hipStreamWaitEvent(stream, grid_desc->events[0], 0));
   }
 
-  if (need_quiet) { nvshmemx_quiet_on_stream(stream); }
+  if (need_quiet) { hipdecomp_rocshmem_quiet(stream); }
 
-  // Using hipStreamSynchronize + barrier instead of nvshmemx_team_sync_on_stream for lower latency
+  // Using hipStreamSynchronize + barrier instead of hipdecomp_rocshmem_team_sync for lower latency
   CHECK_HIP(hipStreamSynchronize(stream));
   CHECK_MPI(MPI_Barrier(comm));
-  // nvshmemx_team_sync_on_stream(team, stream);
+  // hipdecomp_rocshmem_team_sync(team, stream);
 }
 #endif
 
@@ -188,7 +187,7 @@ static void hipdecompAlltoall(const hipdecompHandle_t& handle, const hipdecompGr
                               const std::vector<comm_count_t>& send_offsets, T* recv_buff,
                               const std::vector<comm_count_t>& recv_counts,
                               const std::vector<comm_count_t>& recv_offsets,
-                              const std::vector<comm_count_t>& recv_offsets_nvshmem, hipdecompCommAxis comm_axis,
+                              const std::vector<comm_count_t>& recv_offsets_rocshmem, hipdecompCommAxis comm_axis,
                               hipStream_t stream, hipdecompTransposePerformanceSample* current_sample = nullptr) {
   roctx::rangePush("hipdecompAlltoall");
 
@@ -196,31 +195,31 @@ static void hipdecompAlltoall(const hipdecompHandle_t& handle, const hipdecompGr
     CHECK_HIP(hipEventRecord(current_sample->alltoall_start_events[current_sample->alltoall_timing_count], stream));
   }
 
-#ifdef ENABLE_NVSHMEM
-  if (handle->rank == 0 && handle->nvshmem_initialized && !handle->nvshmem_mixed_buffer_warning_issued &&
+#ifdef ENABLE_ROCSHMEM
+  if (handle->rank == 0 && handle->rocshmem_initialized && !handle->rocshmem_mixed_buffer_warning_issued &&
       transposeBackendRequiresMpi(grid_desc->config.transpose_comm_backend) &&
-      (nvshmem_ptr(send_buff, handle->rank) || nvshmem_ptr(recv_buff, handle->rank))) {
-    printf("HIPDECOMP:WARN: A work buffer allocated with nvshmem_malloc (via hipdecompMalloc) is "
+      (rocshmem::rocshmem_ptr(send_buff, handle->rank) || rocshmem::rocshmem_ptr(recv_buff, handle->rank))) {
+    printf("HIPDECOMP:WARN: A work buffer allocated with rocshmem_malloc (via hipdecompMalloc) is "
            "being used with an MPI communication backend. This may cause issues with some MPI "
            "implementations. See the documentation for additional details and possible workarounds "
            "if you encounter issues.\n");
-    handle->nvshmem_mixed_buffer_warning_issued = true;
+    handle->rocshmem_mixed_buffer_warning_issued = true;
   }
 #endif
 
   std::vector<MPI_Request> reqs;
   switch (grid_desc->config.transpose_comm_backend) {
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM: {
-#ifdef ENABLE_NVSHMEM
-    if (nvshmem_ptr(send_buff, handle->rank) && nvshmem_ptr(recv_buff, handle->rank)) {
-      nvshmemAlltoallV(handle, grid_desc, send_buff, send_counts, send_offsets, recv_buff, recv_counts,
-                       recv_offsets_nvshmem, comm_axis, stream);
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM: {
+#ifdef ENABLE_ROCSHMEM
+    if (rocshmem::rocshmem_ptr(send_buff, handle->rank) && rocshmem::rocshmem_ptr(recv_buff, handle->rank)) {
+      rocshmemAlltoallV(handle, grid_desc, send_buff, send_counts, send_offsets, recv_buff, recv_counts,
+                        recv_offsets_rocshmem, comm_axis, stream);
       break;
     } else {
-      THROW_INVALID_USAGE("NVSHMEM communication backends require workspace allocated via hipdecompMalloc.");
+      THROW_INVALID_USAGE("ROCSHMEM communication backends require workspace allocated via hipdecompMalloc.");
     }
 #else
-    THROW_NOT_SUPPORTED("build does not support NVSHMEM communication backends.");
+    THROW_NOT_SUPPORTED("build does not support ROCSHMEM communication backends.");
 #endif
   }
   case HIPDECOMP_TRANSPOSE_COMM_NCCL: {
@@ -322,7 +321,7 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
                            const std::vector<comm_count_t>& send_counts, const std::vector<comm_count_t>& send_offsets,
                            T* recv_buff, const std::vector<comm_count_t>& recv_counts,
                            const std::vector<comm_count_t>& recv_offsets,
-                           const std::vector<comm_count_t>& recv_offsets_nvshmem, hipdecompCommAxis comm_axis,
+                           const std::vector<comm_count_t>& recv_offsets_rocshmem, hipdecompCommAxis comm_axis,
                            const std::vector<int>& src_ranks, const std::vector<int>& dst_ranks, hipStream_t stream,
                            bool& synced, hipdecompTransposePerformanceSample* current_sample = nullptr) {
 
@@ -345,26 +344,26 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
                              handle->streams[0]));
   }
 
-#ifdef ENABLE_NVSHMEM
-  if (handle->rank == 0 && handle->nvshmem_initialized && !handle->nvshmem_mixed_buffer_warning_issued &&
+#ifdef ENABLE_ROCSHMEM
+  if (handle->rank == 0 && handle->rocshmem_initialized && !handle->rocshmem_mixed_buffer_warning_issued &&
       transposeBackendRequiresMpi(grid_desc->config.transpose_comm_backend) &&
-      (nvshmem_ptr(send_buff, handle->rank) || nvshmem_ptr(recv_buff, handle->rank))) {
-    printf("HIPDECOMP:WARN: A work buffer allocated with nvshmem_malloc (via hipdecompMalloc) is "
+      (rocshmem::rocshmem_ptr(send_buff, handle->rank) || rocshmem::rocshmem_ptr(recv_buff, handle->rank))) {
+    printf("HIPDECOMP:WARN: A work buffer allocated with rocshmem_malloc (via hipdecompMalloc) is "
            "being used with an MPI communication backend. This may cause issues with some MPI "
            "implementations. See the documentation for additional details and possible workarounds "
            "if you encounter issues.\n");
-    handle->nvshmem_mixed_buffer_warning_issued = true;
+    handle->rocshmem_mixed_buffer_warning_issued = true;
   }
 #endif
 
   switch (grid_desc->config.transpose_comm_backend) {
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL: {
-#ifdef ENABLE_NVSHMEM
-    if (nvshmem_ptr(send_buff, handle->rank) && nvshmem_ptr(recv_buff, handle->rank)) {
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL: {
+#ifdef ENABLE_ROCSHMEM
+    if (rocshmem::rocshmem_ptr(send_buff, handle->rank) && rocshmem::rocshmem_ptr(recv_buff, handle->rank)) {
       auto comm =
           (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info.mpi_comm : grid_desc->col_comm_info.mpi_comm;
-      // auto team = (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info.nvshmem_team
-      //                                             : grid_desc->col_comm_info.nvshmem_team;
+      // auto team = (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info.rocshmem_team
+      //                                             : grid_desc->col_comm_info.rocshmem_team;
       auto pl_stream = handle->streams[0];
       int self_rank = (comm_axis == HIPDECOMP_COMM_ROW) ? grid_desc->row_comm_info.rank : grid_desc->col_comm_info.rank;
 
@@ -375,13 +374,13 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
 
         if (src_rank == self_rank) {
           // Self-copy with hipMemcpy
-          CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets_nvshmem[self_rank], send_buff + send_offsets[self_rank],
+          CHECK_HIP(hipMemcpyAsync(recv_buff + recv_offsets_rocshmem[self_rank], send_buff + send_offsets[self_rank],
                                    send_counts[self_rank] * sizeof(T), hipMemcpyDeviceToDevice, stream));
         } else {
           CHECK_HIP(hipStreamWaitEvent(pl_stream, grid_desc->events[dst_rank], 0));
           if (!synced) {
-            // Using hipEventSynchronize + barrier instead of nvshmemx_team_sync_on_stream for lower latency
-            CHECK_HIP(hipEventSynchronize(grid_desc->nvshmem_sync_event));
+            // Using hipEventSynchronize + barrier instead of hipdecomp_rocshmem_team_sync for lower latency
+            CHECK_HIP(hipEventSynchronize(grid_desc->rocshmem_sync_event));
             CHECK_MPI(MPI_Barrier(comm));
             // Only need to sync on the first remote operation of an alltoall sequence to ensure reads on other ranks
             // from previous communication have completed.
@@ -389,14 +388,14 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
           }
 
           int dst_rank_global = getGlobalRank(handle, grid_desc, comm_axis, dst_rank);
-          // Need to chunk host API calls due to 2 GiB limitation in API
+          // Keep chunking (inherited from the equivalent NVSHMEM host API's 2 GiB limitation) for parity
           size_t send_bytes = send_counts[dst_rank] * sizeof(T);
-          int nchunks = (send_bytes + HIPDECOMP_NVSHMEM_CHUNK_SZ - 1) / HIPDECOMP_NVSHMEM_CHUNK_SZ;
+          int nchunks = (send_bytes + HIPDECOMP_ROCSHMEM_CHUNK_SZ - 1) / HIPDECOMP_ROCSHMEM_CHUNK_SZ;
           for (int j = 0; j < nchunks; ++j) {
-            nvshmemx_putmem_nbi_on_stream(
-                recv_buff + recv_offsets_nvshmem[dst_rank] + j * (HIPDECOMP_NVSHMEM_CHUNK_SZ / sizeof(T)),
-                send_buff + send_offsets[dst_rank] + j * (HIPDECOMP_NVSHMEM_CHUNK_SZ / sizeof(T)),
-                std::min(static_cast<size_t>(HIPDECOMP_NVSHMEM_CHUNK_SZ), send_bytes - j * HIPDECOMP_NVSHMEM_CHUNK_SZ),
+            hipdecomp_rocshmem_putmem_nbi(
+                recv_buff + recv_offsets_rocshmem[dst_rank] + j * (HIPDECOMP_ROCSHMEM_CHUNK_SZ / sizeof(T)),
+                send_buff + send_offsets[dst_rank] + j * (HIPDECOMP_ROCSHMEM_CHUNK_SZ / sizeof(T)),
+                std::min(static_cast<size_t>(HIPDECOMP_ROCSHMEM_CHUNK_SZ), send_bytes - j * HIPDECOMP_ROCSHMEM_CHUNK_SZ),
                 dst_rank_global, pl_stream);
           }
 
@@ -405,12 +404,12 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
       }
 
       if (barrier) {
-        nvshmemx_quiet_on_stream(pl_stream);
-        // Using hipStreamSynchronize + barrier instead of nvshmemx_team_sync_on_stream for lower latency
+        hipdecomp_rocshmem_quiet(pl_stream);
+        // Using hipStreamSynchronize + barrier instead of hipdecomp_rocshmem_team_sync for lower latency
         CHECK_HIP(hipStreamSynchronize(pl_stream));
         CHECK_MPI(MPI_Barrier(comm));
 
-        // nvshmemx_team_sync_on_stream(team, pl_stream);
+        // hipdecomp_rocshmem_team_sync(team, pl_stream);
         // for (int i = 0; i < src_ranks.size(); ++i) {
         //  int src_rank = src_ranks[i];
         //  int dst_rank = dst_ranks[i];
@@ -422,10 +421,10 @@ hipdecompAlltoallPipelined(const hipdecompHandle_t& handle, const hipdecompGridD
       }
       break;
     } else {
-      THROW_INVALID_USAGE("NVSHMEM communication backends require workspace allocated via hipdecompMalloc.");
+      THROW_INVALID_USAGE("ROCSHMEM communication backends require workspace allocated via hipdecompMalloc.");
     }
 #else
-    THROW_NOT_SUPPORTED("build does not support NVSHMEM communication backends.");
+    THROW_NOT_SUPPORTED("build does not support ROCSHMEM communication backends.");
 #endif
   }
   case HIPDECOMP_TRANSPOSE_COMM_NCCL_PL: {
@@ -538,25 +537,25 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
     CHECK_HIP(hipEventRecord(current_sample->sendrecv_start_event, stream));
   }
 
-#ifdef ENABLE_NVSHMEM
-  if (handle->rank == 0 && handle->nvshmem_initialized && !handle->nvshmem_mixed_buffer_warning_issued &&
+#ifdef ENABLE_ROCSHMEM
+  if (handle->rank == 0 && handle->rocshmem_initialized && !handle->rocshmem_mixed_buffer_warning_issued &&
       haloBackendRequiresMpi(grid_desc->config.halo_comm_backend) &&
-      (nvshmem_ptr(send_buff, handle->rank) || nvshmem_ptr(recv_buff, handle->rank))) {
-    printf("HIPDECOMP:WARN: A work buffer allocated with nvshmem_malloc (via hipdecompMalloc) is "
+      (rocshmem::rocshmem_ptr(send_buff, handle->rank) || rocshmem::rocshmem_ptr(recv_buff, handle->rank))) {
+    printf("HIPDECOMP:WARN: A work buffer allocated with rocshmem_malloc (via hipdecompMalloc) is "
            "being used with an MPI communication backend. This may cause issues with some MPI "
            "implementations. See the documentation for additional details and possible workarounds "
            "if you encounter issues.\n");
-    handle->nvshmem_mixed_buffer_warning_issued = true;
+    handle->rocshmem_mixed_buffer_warning_issued = true;
   }
 #endif
 
   switch (grid_desc->config.halo_comm_backend) {
-  case HIPDECOMP_HALO_COMM_NVSHMEM:
-  case HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING: {
-#ifdef ENABLE_NVSHMEM
-    if (nvshmem_ptr(send_buff, handle->rank) && nvshmem_ptr(recv_buff, handle->rank)) {
-      nvshmemx_quiet_on_stream(stream);
-      nvshmemx_sync_all_on_stream(stream);
+  case HIPDECOMP_HALO_COMM_ROCSHMEM:
+  case HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING: {
+#ifdef ENABLE_ROCSHMEM
+    if (rocshmem::rocshmem_ptr(send_buff, handle->rank) && rocshmem::rocshmem_ptr(recv_buff, handle->rank)) {
+      hipdecomp_rocshmem_quiet(stream);
+      hipdecomp_rocshmem_sync_all(stream);
       for (int i = 0; i < send_counts.size(); ++i) {
         if (peer_ranks[i] == handle->rank) {
           // Self-copy with hipMemcpy
@@ -564,26 +563,26 @@ static void hipdecompSendRecvPair(const hipdecompHandle_t& handle, const hipdeco
                                    hipMemcpyDeviceToDevice, stream));
         } else {
           if (peer_ranks[(i + 1) % 2] != -1) {
-            nvshmemx_putmem_nbi_on_stream(recv_buff + recv_offsets[i], send_buff + send_offsets[(i + 1) % 2],
+            hipdecomp_rocshmem_putmem_nbi(recv_buff + recv_offsets[i], send_buff + send_offsets[(i + 1) % 2],
                                           send_counts[(i + 1) % 2] * sizeof(T), peer_ranks[(i + 1) % 2], stream);
           }
         }
-        if (grid_desc->config.halo_comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING) {
-          nvshmemx_quiet_on_stream(stream);
-          nvshmemx_sync_all_on_stream(stream);
+        if (grid_desc->config.halo_comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING) {
+          hipdecomp_rocshmem_quiet(stream);
+          hipdecomp_rocshmem_sync_all(stream);
         }
       }
 
-      if (grid_desc->config.halo_comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM) {
-        nvshmemx_quiet_on_stream(stream);
-        nvshmemx_sync_all_on_stream(stream);
+      if (grid_desc->config.halo_comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM) {
+        hipdecomp_rocshmem_quiet(stream);
+        hipdecomp_rocshmem_sync_all(stream);
       };
       break;
     } else {
-      THROW_INVALID_USAGE("NVSHMEM communication backends require workspace allocated via hipdecompMalloc.");
+      THROW_INVALID_USAGE("ROCSHMEM communication backends require workspace allocated via hipdecompMalloc.");
     }
 #else
-    THROW_NOT_SUPPORTED("build does not support NVSHMEM communication backends.");
+    THROW_NOT_SUPPORTED("build does not support ROCSHMEM communication backends.");
 #endif
   }
   case HIPDECOMP_HALO_COMM_NCCL: {

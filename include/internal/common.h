@@ -33,9 +33,8 @@
 #include <hip/hip_runtime.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
-#include <nvshmemx.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
 #endif
 
 #include "hipdecomp.h"
@@ -76,14 +75,13 @@ struct hipdecompHandle {
 
   bool initialized = false;
 
-  // Entries for NVSHMEM management and warning generation
-  bool nvshmem_initialized = false;                      // Flag to track NVSHMEM initialization
-  int n_grid_descs_using_nvshmem = 0;                    // Count of grid descriptors using NVSHMEM
-  bool nvshmem_mixed_buffer_warning_issued = false;      // Warn once if NVSHMEM buffer is used with MPI
-  size_t nvshmem_symmetric_size;                         // NVSHMEM symmetric size
-  bool nvshmem_vmm;                                      // Flag to track if NVSHMEM is using VMM allocations
-  std::unordered_map<void*, size_t> nvshmem_allocations; // Table to record NVSHMEM allocations
-  size_t nvshmem_allocation_size = 0;                    // Total of NVSHMEM allocations
+  // Entries for ROCSHMEM management and warning generation
+  bool rocshmem_initialized = false;                      // Flag to track ROCSHMEM initialization
+  int n_grid_descs_using_rocshmem = 0;                    // Count of grid descriptors using ROCSHMEM
+  bool rocshmem_mixed_buffer_warning_issued = false;      // Warn once if ROCSHMEM buffer is used with MPI
+  size_t rocshmem_symmetric_size;                         // ROCSHMEM symmetric heap size
+  std::unordered_map<void*, size_t> rocshmem_allocations; // Table to record ROCSHMEM allocations
+  size_t rocshmem_allocation_size = 0;                    // Total of ROCSHMEM allocations
 
   // Multi-node NVLINK (MNNVL)
   bool hip_cumem_enable = false; // Flag to control whether cuMem* APIs are used for hipdecompMalloc/Free
@@ -117,8 +115,8 @@ struct hipdecompCommInfo {
   int32_t ngroups = 0;   // number of p2p groups (i.e. grouping of ranks with fast interconnect) in communicator
   int32_t npergroup = 0; // number of ranks per p2p group
 
-#ifdef ENABLE_NVSHMEM
-  nvshmem_team_t nvshmem_team = NVSHMEM_TEAM_INVALID;
+#ifdef ENABLE_ROCSHMEM
+  rocshmem::rocshmem_team_t rocshmem_team = rocshmem::ROCSHMEM_TEAM_INVALID;
 #endif
 };
 
@@ -168,8 +166,8 @@ struct hipdecompGridDesc {
   hipdecompCommInfo row_comm_info; // row communicator information
   hipdecompCommInfo col_comm_info; // column communicator information
 
-  std::vector<hipEvent_t> events{nullptr}; // HIP events used for scheduling
-  hipEvent_t nvshmem_sync_event = nullptr; // NVSHMEM event used for synchronization
+  std::vector<hipEvent_t> events{nullptr};  // HIP events used for scheduling
+  hipEvent_t rocshmem_sync_event = nullptr; // ROCSHMEM event used for synchronization
 
   hipdecomp::graphCache graph_cache; // HIP graph cache
 
@@ -279,12 +277,12 @@ static inline bool haloBackendRequiresNccl(hipdecompHaloCommBackend_t comm_backe
   return (comm_backend == HIPDECOMP_HALO_COMM_NCCL);
 }
 
-static inline bool transposeBackendRequiresNvshmem(hipdecompTransposeCommBackend_t comm_backend) {
-  return (comm_backend == HIPDECOMP_TRANSPOSE_COMM_NVSHMEM || comm_backend == HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL);
+static inline bool transposeBackendRequiresRocshmem(hipdecompTransposeCommBackend_t comm_backend) {
+  return (comm_backend == HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM || comm_backend == HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL);
 }
 
-static inline bool haloBackendRequiresNvshmem(hipdecompHaloCommBackend_t comm_backend) {
-  return (comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM || comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING);
+static inline bool haloBackendRequiresRocshmem(hipdecompHaloCommBackend_t comm_backend) {
+  return (comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM || comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING);
 }
 
 static inline bool isManagedPointer(void* ptr) {
@@ -345,6 +343,39 @@ static void setCommInfo(hipdecompHandle_t& handle, hipdecompGridDesc_t& grid_des
   info.npergroup = count;
   info.ngroups = info.nranks / info.npergroup;
 }
+
+#ifdef ENABLE_ROCSHMEM
+// Splits ROCSHMEM_TEAM_WORLD into row/col teams matching the row/col rank ordering used by getGlobalRank.
+// rocSHMEM has no team_split_2d equivalent (unlike NVSHMEM), so each team is built directly via
+// rocshmem_team_split_strided using the same start/stride/size math that getGlobalRank encodes.
+static inline void rocshmemTeamSplit2D(hipdecompHandle_t& handle, hipdecompGridDesc_t& grid_desc) {
+  int start_row, stride_row, size_row;
+  int start_col, stride_col, size_col;
+
+  if (handle->use_col_major_rank_order) {
+    start_row = grid_desc->pidx[0];
+    stride_row = grid_desc->config.pdims[0];
+    size_row = grid_desc->config.pdims[1];
+
+    start_col = grid_desc->config.pdims[0] * grid_desc->pidx[1];
+    stride_col = 1;
+    size_col = grid_desc->config.pdims[0];
+  } else {
+    start_row = grid_desc->config.pdims[1] * grid_desc->pidx[0];
+    stride_row = 1;
+    size_row = grid_desc->config.pdims[1];
+
+    start_col = grid_desc->pidx[1];
+    stride_col = grid_desc->config.pdims[1];
+    size_col = grid_desc->config.pdims[0];
+  }
+
+  CHECK_ROCSHMEM(rocshmem::rocshmem_team_split_strided(rocshmem::ROCSHMEM_TEAM_WORLD, start_row, stride_row, size_row,
+                                                        nullptr, 0, &grid_desc->row_comm_info.rocshmem_team));
+  CHECK_ROCSHMEM(rocshmem::rocshmem_team_split_strided(rocshmem::ROCSHMEM_TEAM_WORLD, start_col, stride_col, size_col,
+                                                        nullptr, 0, &grid_desc->col_comm_info.rocshmem_team));
+}
+#endif
 
 static inline void getAlltoallPeerRanks(hipdecompGridDesc_t grid_desc, hipdecompCommAxis comm_axis, int iter,
                                         int& src_rank, int& dst_rank) {

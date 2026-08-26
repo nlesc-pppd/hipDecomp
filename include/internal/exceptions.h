@@ -50,9 +50,9 @@
   do {                                                                                                                 \
     throw hipdecomp::NcclError(__FILE__, __LINE__, msg);                                                               \
   } while (false)
-#define THROW_NVSHMEM_ERROR(msg)                                                                                       \
+#define THROW_ROCSHMEM_ERROR(msg)                                                                                      \
   do {                                                                                                                 \
-    throw hipdecomp::NvshmemError(__FILE__, __LINE__, msg);                                                            \
+    throw hipdecomp::RocshmemError(__FILE__, __LINE__, msg);                                                           \
   } while (false)
 
 namespace hipdecomp {
@@ -120,11 +120,11 @@ public:
   hipdecompResult_t getResult() const override { return HIPDECOMP_RESULT_NCCL_ERROR; }
 };
 
-class NvshmemError : public BaseException {
+class RocshmemError : public BaseException {
 public:
-  NvshmemError(const char* file, int line, const char* extra_info = nullptr)
-      : BaseException(file, line, "NVSHMEM error.", extra_info) {};
-  hipdecompResult_t getResult() const override { return HIPDECOMP_RESULT_NVSHMEM_ERROR; }
+  RocshmemError(const char* file, int line, const char* extra_info = nullptr)
+      : BaseException(file, line, "ROCSHMEM error.", extra_info) {};
+  hipdecompResult_t getResult() const override { return HIPDECOMP_RESULT_ROCSHMEM_ERROR; }
 };
 
 } // namespace hipdecomp

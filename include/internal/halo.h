@@ -137,12 +137,12 @@ void hipdecompUpdateHalos_(int ax, const hipdecompHandle_t handle, const hipdeco
   bool managed = isManagedPointer(input);
   bool input_has_padding = anyNonzeros(padding);
 
-  if (c == 2 && (input_has_padding || haloBackendRequiresNvshmem(grid_desc->config.halo_comm_backend) ||
+  if (c == 2 && (input_has_padding || haloBackendRequiresRocshmem(grid_desc->config.halo_comm_backend) ||
                  (managed && haloBackendRequiresMpi(grid_desc->config.halo_comm_backend)))) {
     // For padded input, always stage to work space.
     // For managed memory, always stage to work space if using MPI.
-    // For any memory, always stage to workspace if using NVSHMEM.
-    // Can revisit for NVSHMEM if input is NVSHMEM allocated.
+    // For any memory, always stage to workspace if using ROCSHMEM.
+    // Can revisit for ROCSHMEM if input is ROCSHMEM allocated.
     c = 1;
   }
 

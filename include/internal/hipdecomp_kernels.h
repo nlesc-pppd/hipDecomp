@@ -21,24 +21,36 @@
 
 #include <complex>
 
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
+#endif
+
 namespace hipdecomp {
 
-#ifdef ENABLE_NVSHMEM
-#define HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY 96
-template <typename T> struct hipdecompNvshmemA2AParams {
+#ifdef ENABLE_ROCSHMEM
+#define HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY 96
+template <typename T> struct hipdecompRocshmemA2AParams {
   int ntransfers;
   T* send_buff = nullptr;
   T* recv_buff = nullptr;
-  size_t send_offsets[HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY];
-  size_t recv_offsets[HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY];
-  size_t send_counts[HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY];
-  int peer_ranks[HIPDECOMP_NVSHMEM_A2A_PARAM_CAPACITY];
+  size_t send_offsets[HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY];
+  size_t recv_offsets[HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY];
+  size_t send_counts[HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY];
+  int peer_ranks[HIPDECOMP_ROCSHMEM_A2A_PARAM_CAPACITY];
 };
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<float>& params, hipStream_t stream);
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<double>& params, hipStream_t stream);
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<float>>& params, hipStream_t stream);
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<double>>& params, hipStream_t stream);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<float>& params, hipStream_t stream);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<double>& params, hipStream_t stream);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<float>>& params, hipStream_t stream);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<double>>& params, hipStream_t stream);
+
+// Kernel-launch wrappers bridging host-issued, stream-ordered calls to rocSHMEM's device-only RMA/sync API
+// (rocSHMEM, unlike NVSHMEM, does not provide host-callable "on_stream" put/quiet/sync convenience functions).
+void hipdecomp_rocshmem_putmem(void* dest, const void* source, size_t nbytes, int pe, hipStream_t stream);
+void hipdecomp_rocshmem_putmem_nbi(void* dest, const void* source, size_t nbytes, int pe, hipStream_t stream);
+void hipdecomp_rocshmem_quiet(hipStream_t stream);
+void hipdecomp_rocshmem_sync_all(hipStream_t stream);
+void hipdecomp_rocshmem_team_sync(rocshmem::rocshmem_team_t team, hipStream_t stream);
 #endif
 
 #define HIPDECOMP_BATCHED_D2D_3D_PARAM_CAPACITY 56

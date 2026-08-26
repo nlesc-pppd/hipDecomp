@@ -77,6 +77,16 @@
     }                                                                                                                  \
   } while (false)
 
+#define CHECK_ROCSHMEM(call)                                                                                          \
+  do {                                                                                                                 \
+    int err = call;                                                                                                    \
+    if (0 != err) {                                                                                                    \
+      std::ostringstream os;                                                                                          \
+      os << "error code " << err;                                                                                     \
+      throw hipdecomp::RocshmemError(__FILE__, __LINE__, os.str().c_str());                                           \
+    }                                                                                                                  \
+  } while (false)
+
 // Checks with exit (test usage)
 #define CHECK_HIPDECOMP_EXIT(call)                                                                                     \
   do {                                                                                                                 \

@@ -19,8 +19,8 @@
 #ifndef HIPDECOMP_KERNELS_CUH
 #define HIPDECOMP_KERNELS_CUH
 
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
 #endif
 
 #include "internal/hipdecomp_kernels.h"
@@ -31,10 +31,10 @@
 
 namespace hipdecomp {
 
-#ifdef ENABLE_NVSHMEM
+#ifdef ENABLE_ROCSHMEM
 template <typename T>
 __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
-    void hipdecomp_nvshmem_alltoallv_k(hipdecompNvshmemA2AParams<T> params) {
+    void hipdecomp_rocshmem_alltoallv_k(hipdecompRocshmemA2AParams<T> params) {
 
   const int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid >= params.ntransfers) return;
@@ -46,7 +46,23 @@ __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
   size_t recv_offset = params.recv_offsets[tid];
   size_t send_count = params.send_counts[tid];
 
-  nvshmem_putmem_nbi(recv_buff + recv_offset, send_buff + send_offset, send_count * sizeof(T), peer_rank);
+  rocshmem::rocshmem_putmem_nbi(recv_buff + recv_offset, send_buff + send_offset, send_count * sizeof(T), peer_rank);
+}
+
+__global__ void hipdecomp_rocshmem_putmem_k(void* dest, const void* source, size_t nbytes, int pe) {
+  rocshmem::rocshmem_putmem(dest, source, nbytes, pe);
+}
+
+__global__ void hipdecomp_rocshmem_putmem_nbi_k(void* dest, const void* source, size_t nbytes, int pe) {
+  rocshmem::rocshmem_putmem_nbi(dest, source, nbytes, pe);
+}
+
+__global__ void hipdecomp_rocshmem_quiet_k() { rocshmem::rocshmem_quiet(); }
+
+__global__ void hipdecomp_rocshmem_sync_all_k() { rocshmem::rocshmem_sync_all(); }
+
+__global__ void hipdecomp_rocshmem_team_sync_k(rocshmem::rocshmem_team_t team) {
+  rocshmem::rocshmem_ctx_barrier(rocshmem::ROCSHMEM_CTX_DEFAULT, team);
 }
 #endif
 
