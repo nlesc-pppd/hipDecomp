@@ -46,8 +46,7 @@ module halo_HIPDECOMP_DOUBLE_COMPLEX_mod
 #endif
 
   use, intrinsic :: iso_fortran_env, only: real32, real64
-  use hipfort, only: hipFree,hipGetDeviceCount,hipMalloc,hipMallocManaged,hipSuccess,hipSetDevice
-  use hipfort_types, only: hipMemAttachGlobal
+  use hipfort, only: hipFree,hipGetDeviceCount,hipMalloc,hipMallocManaged,hipMemAttachGlobal,hipSuccess,hipSetDevice
   use hipdecomp
   use mpi
 
