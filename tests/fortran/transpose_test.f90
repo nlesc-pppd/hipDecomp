@@ -13,6 +13,8 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#include "internal/macros.h"
+
 #define CHECK_HIPDECOMP_EXIT(f) if (f /= HIPDECOMP_RESULT_SUCCESS) call exit(1)
 #define CHECK_HIPDECOMP(f) if (f /= HIPDECOMP_RESULT_SUCCESS) then; res = 1; return; endif
 #define CHECK_HIP_EXIT(f) if (f /= hipSuccess) call exit(1)
