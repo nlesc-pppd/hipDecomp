@@ -27,6 +27,9 @@ foreach(tgt ${basic_usage_targets_cc})
   target_link_libraries(${tgt} PRIVATE MPI::MPI_CXX)
   target_link_libraries(${tgt} PRIVATE hipdecomp)
   set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
+  if(HIPDECOMP_USE_CUDECOMP_NAMES)
+    target_compile_definitions(${tgt} PRIVATE USE_CUDECOMP_NAMES)
+  endif()
 endforeach()
 
 install(

@@ -40,6 +40,7 @@
 #include "internal/exceptions.h"
 #include "internal/halo.h"
 #include "internal/hashes.h"
+#include "internal/macros.h"
 #include "internal/transpose.h"
 
 namespace hipdecomp {

@@ -35,6 +35,7 @@
 
 #include "hipdecomp.h"
 #include "internal/checks.h"
+#include "internal/macros.h"
 
 #if defined(R32)
 using real_t = float;

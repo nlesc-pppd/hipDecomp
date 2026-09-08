@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "internal/common.h"
+#include "internal/macros.h"
 
 namespace hipdecomp {
 

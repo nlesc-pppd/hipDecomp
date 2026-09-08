@@ -42,6 +42,17 @@ extern "C" {
 /**
  * @brief This enum lists the different available transpose backend options.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef enum {
+  CUDECOMP_TRANSPOSE_COMM_MPI_P2P = 1,
+  CUDECOMP_TRANSPOSE_COMM_MPI_P2P_PL = 2,
+  CUDECOMP_TRANSPOSE_COMM_MPI_A2A = 3,
+  CUDECOMP_TRANSPOSE_COMM_NCCL = 4,
+  CUDECOMP_TRANSPOSE_COMM_NCCL_PL = 5,
+  CUDECOMP_TRANSPOSE_COMM_NVSHMEM = 6,
+  CUDECOMP_TRANSPOSE_COMM_NVSHMEM_PL = 7
+} cudecompTransposeCommBackend_t;
+#else
 typedef enum {
   HIPDECOMP_TRANSPOSE_COMM_MPI_P2P = 1,    ///< MPI backend using peer-to-peer algorithm (i.e.,MPI_Isend/MPI_Irecv)
   HIPDECOMP_TRANSPOSE_COMM_MPI_P2P_PL = 2, ///< MPI backend using peer-to-peer algorithm with pipelining
@@ -51,10 +62,20 @@ typedef enum {
   HIPDECOMP_TRANSPOSE_COMM_NVSHMEM = 6,    ///< NVSHMEM backend
   HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL = 7  ///< NVSHMEM backend with pipelining
 } hipdecompTransposeCommBackend_t;
+#endif
 
 /**
  * @brief This enum lists the different available halo backend options.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef enum {
+  CUDECOMP_HALO_COMM_MPI = 1,
+  CUDECOMP_HALO_COMM_MPI_BLOCKING = 2,
+  CUDECOMP_HALO_COMM_NCCL = 3,
+  CUDECOMP_HALO_COMM_NVSHMEM = 4,
+  CUDECOMP_HALO_COMM_NVSHMEM_BLOCKING = 5
+} cudecompHaloCommBackend_t;
+#else
 typedef enum {
   HIPDECOMP_HALO_COMM_MPI = 1,             ///< MPI backend
   HIPDECOMP_HALO_COMM_MPI_BLOCKING = 2,    ///< MPI backend with blocking between each peer transfer
@@ -62,29 +83,56 @@ typedef enum {
   HIPDECOMP_HALO_COMM_NVSHMEM = 4,         ///< NVSHMEM backend
   HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING = 5 ///< NVSHMEM backend with blocking between each peer transfer
 } hipdecompHaloCommBackend_t;
+#endif
 
 /**
  * @brief This enum defines the data types supported.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef enum {
+  CUDECOMP_FLOAT = -1,
+  CUDECOMP_DOUBLE = -2,
+  CUDECOMP_FLOAT_COMPLEX = -3,
+  CUDECOMP_DOUBLE_COMPLEX = -4
+} cudecompDataType_t;
+#else
 typedef enum {
   HIPDECOMP_FLOAT = -1,         ///< Single-precision real
   HIPDECOMP_DOUBLE = -2,        ///< Double-precision real
   HIPDECOMP_FLOAT_COMPLEX = -3, ///< Single-precision complex (interleaved)
   HIPDECOMP_DOUBLE_COMPLEX = -4 ///< Double-precision complex (interleaved)
 } hipdecompDataType_t;
+#endif
 
 /**
  * @brief This enum defines the modes available for process grid autotuning.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef enum { CUDECOMP_AUTOTUNE_GRID_TRANSPOSE = 0, CUDECOMP_AUTOTUNE_GRID_HALO = 1 } cudecompAutotuneGridMode_t;
+#else
 typedef enum {
   HIPDECOMP_AUTOTUNE_GRID_TRANSPOSE = 0, ///< Use transpose communication to autotune process grid dimensions
   HIPDECOMP_AUTOTUNE_GRID_HALO = 1       ///< Use halo communication to autotune process grid dimensions
 } hipdecompAutotuneGridMode_t;
+#endif
 
 /**
  * @brief This enum defines the possible values return values from hipDecomp. Most functions in the hipDecomp library
  * will return one of these values to indicate if an operation has completed successfully or an error occured.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef enum {
+  CUDECOMP_RESULT_SUCCESS = 0,
+  CUDECOMP_RESULT_INVALID_USAGE = 1,
+  CUDECOMP_RESULT_NOT_SUPPORTED = 2,
+  CUDECOMP_RESULT_INTERNAL_ERROR = 3,
+  CUDECOMP_RESULT_CUDA_ERROR = 4,
+  CUDECOMP_RESULT_CUTENSOR_ERROR = 5,
+  CUDECOMP_RESULT_MPI_ERROR = 6,
+  CUDECOMP_RESULT_NCCL_ERROR = 7,
+  CUDECOMP_RESULT_NVSHMEM_ERROR = 8,
+} cudecompResult_t;
+#else
 typedef enum {
   HIPDECOMP_RESULT_SUCCESS = 0,        ///< The operation completed successfully
   HIPDECOMP_RESULT_INVALID_USAGE = 1,  ///< A user error, typically an invalid argument
@@ -96,21 +144,42 @@ typedef enum {
   HIPDECOMP_RESULT_MPI_ERROR = 6,  ///< An error occurred in the MPI library
   HIPDECOMP_RESULT_NCCL_ERROR = 7, ///< An error occured in the NCCL library
   HIPDECOMP_RESULT_NVSHMEM_ERROR = 8, ///< An error occured in the NVSHMEM library
+  HIPDECOMP_RESULT_NVML_ERROR = 9     ///< An error occurred in the NVML library (keeping for cuDecomp compatibility)
 } hipdecompResult_t;
+#endif
 
 /**
  * @brief A pointer to a hipDecomp internal handle structure.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef struct cudecompHandle* cudecompHandle_t;
+#else
 typedef struct hipdecompHandle* hipdecompHandle_t;
+#endif
 
 /**
  * @brief A pointer to a hipDecomp internal grid descriptor structure.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef struct cudecompGridDesc* cudecompGridDesc_t;
+#else
 typedef struct hipdecompGridDesc* hipdecompGridDesc_t;
+#endif
 
 /**
  * @brief A data structure defining configuration options for grid descriptor creation.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef struct {
+  int32_t gdims[3];
+  int32_t gdims_dist[3];
+  int32_t pdims[2];
+  cudecompTransposeCommBackend_t transpose_comm_backend;
+  bool transpose_axis_contiguous[3];
+  int32_t transpose_mem_order[3][3];
+  cudecompHaloCommBackend_t halo_comm_backend;
+} cudecompGridDescConfig_t;
+#else
 typedef struct {
   // Grid information
   int32_t gdims[3];      ///< dimensions of global data grid
@@ -131,10 +200,35 @@ typedef struct {
       halo_comm_backend; ///< communication backend to use for halo communication (default: HIPDECOMP_HALO_COMM_MPI)
 
 } hipdecompGridDescConfig_t;
+#endif
 
 /**
  * @brief A data structure defining autotuning options for grid descriptor creation.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef struct {
+  int32_t n_warmup_trials;
+  int32_t n_trials;
+  cudecompAutotuneGridMode_t grid_mode;
+  cudecompDataType_t dtype;
+  bool allow_uneven_decompositions;
+  bool disable_nccl_backends;
+  bool disable_nvshmem_backends;
+  double skip_threshold;
+  bool autotune_transpose_backend;
+  bool transpose_use_inplace_buffers[4];
+  double transpose_op_weights[4];
+  int32_t transpose_input_halo_extents[4][3];
+  int32_t transpose_output_halo_extents[4][3];
+  int32_t transpose_input_padding[4][3];
+  int32_t transpose_output_padding[4][3];
+  bool autotune_halo_backend;
+  int32_t halo_extents[3];
+  bool halo_periods[3];
+  int32_t halo_axis;
+  int32_t halo_padding[3];
+} cudecompGridDescAutotuneOptions_t;
+#else
 typedef struct {
   // General options
   int32_t n_warmup_trials; ///< number of warmup trials to run for each tested configuration during autotuning
@@ -188,10 +282,22 @@ typedef struct {
   int32_t halo_axis;          ///< which axis pencils to use for halo autotuning (default: 0, X-pencils)
   int32_t halo_padding[3];    ///< padding argument for halo autotuning (default: [0, 0, 0])
 } hipdecompGridDescAutotuneOptions_t;
+#endif
 
 /**
  * @brief A data structure containing geometry information about a pencil data buffer.
  */
+#ifdef USE_CUDECOMP_NAMES
+typedef struct {
+  int32_t shape[3];        ///< pencil shape (in local order, including halo and padding elements)
+  int32_t lo[3];           ///< lower bound coordinates (in local order, excluding halo and padding elements)
+  int32_t hi[3];           ///< upper bound coordinates (in local order, excluding halo and padding elements)
+  int32_t order[3];        ///< data layout order (e.g. 2,1,0 means memory is ordered Z,Y,X)
+  int32_t halo_extents[3]; ///< halo extents by dimension (in global order)
+  int32_t padding[3];      ///< padding by dimension (in global order)
+  int64_t size;            ///< number of elements in pencil (including halo and padding elements)
+} cudecompPencilInfo_t;
+#else
 typedef struct {
   int32_t shape[3];        ///< pencil shape (in local order, including halo and padding elements)
   int32_t lo[3];           ///< lower bound coordinates (in local order, excluding halo and padding elements)
@@ -201,6 +307,7 @@ typedef struct {
   int32_t padding[3];      ///< padding by dimension (in global order)
   int64_t size;            ///< number of elements in pencil (including halo and padding elements)
 } hipdecompPencilInfo_t;
+#endif
 
 // hipDecomp initialization/finalization functions
 /**
@@ -211,7 +318,11 @@ typedef struct {
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompInit(cudecompHandle_t* handle, MPI_Comm mpi_comm);
+#else
 hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle, MPI_Comm mpi_comm);
+#endif
 
 /**
  * @brief Initializes the hipDecomp library from an existing MPI communicator
@@ -221,7 +332,11 @@ hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle, MPI_Comm mpi_comm);
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompInit_F(cudecompHandle_t* handle, MPI_Fint mpi_comm_f);
+#else
 hipdecompResult_t hipdecompInit_F(hipdecompHandle_t* handle, MPI_Fint mpi_comm_f);
+#endif
 
 /**
  * @brief Finalizes the hipDecomp library and frees associated resources
@@ -230,7 +345,11 @@ hipdecompResult_t hipdecompInit_F(hipdecompHandle_t* handle, MPI_Fint mpi_comm_f
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompFinalize(cudecompHandle_t handle);
+#else
 hipdecompResult_t hipdecompFinalize(hipdecompHandle_t handle);
+#endif
 
 // hipdecompGridDesc_t creation/manipulation functions
 /**
@@ -249,9 +368,16 @@ hipdecompResult_t hipdecompFinalize(hipdecompHandle_t handle);
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGridDescCreate(cudecompHandle_t handle, cudecompGridDesc_t* grid_desc,
+                                        cudecompGridDescConfig_t* config,
+                                        const cudecompGridDescAutotuneOptions_t* options);
+#else
 hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGridDesc_t* grid_desc,
                                           hipdecompGridDescConfig_t* config,
                                           const hipdecompGridDescAutotuneOptions_t* options);
+#endif
+
 /**
  * @brief Destroys a hipDecomp grid descriptor and frees associated resources.
  * @param[in] handle The initialized hipDecomp library handle
@@ -259,7 +385,11 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGridDescDestroy(cudecompHandle_t handle, cudecompGridDesc_t grid_desc);
+#else
 hipdecompResult_t hipdecompGridDescDestroy(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc);
+#endif
 
 // hipdecompGridDescConfig_t creation/manipulation functions
 /**
@@ -270,7 +400,11 @@ hipdecompResult_t hipdecompGridDescDestroy(hipdecompHandle_t handle, hipdecompGr
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGridDescConfigSetDefaults(cudecompGridDescConfig_t* config);
+#else
 hipdecompResult_t hipdecompGridDescConfigSetDefaults(hipdecompGridDescConfig_t* config);
+#endif
 
 // hipdecompGridDescAutotuneOptions_t creation/manipulation functions
 /**
@@ -281,7 +415,11 @@ hipdecompResult_t hipdecompGridDescConfigSetDefaults(hipdecompGridDescConfig_t* 
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGridDescAutotuneOptionsSetDefaults(cudecompGridDescAutotuneOptions_t* options);
+#else
 hipdecompResult_t hipdecompGridDescAutotuneOptionsSetDefaults(hipdecompGridDescAutotuneOptions_t* options);
+#endif
 
 // General functions
 /**
@@ -303,9 +441,15 @@ hipdecompResult_t hipdecompGridDescAutotuneOptionsSetDefaults(hipdecompGridDescA
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetPencilInfo(cudecompHandle_t handle, cudecompGridDesc_t grid_desc,
+                                       cudecompPencilInfo_t* pencil_info, int32_t axis, const int32_t halo_extents[],
+                                       const int32_t padding[]);
+#else
 hipdecompResult_t hipdecompGetPencilInfo(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc,
                                          hipdecompPencilInfo_t* pencil_info, int32_t axis, const int32_t halo_extents[],
                                          const int32_t padding[]);
+#endif
 
 /**
  * @brief Queries the required transpose workspace size, in elements, for a provided grid descriptor.
@@ -318,8 +462,13 @@ hipdecompResult_t hipdecompGetPencilInfo(hipdecompHandle_t handle, hipdecompGrid
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetTransposeWorkspaceSize(cudecompHandle_t handle, cudecompGridDesc_t grid_desc,
+                                                   int64_t* workspace_size);
+#else
 hipdecompResult_t hipdecompGetTransposeWorkspaceSize(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc,
                                                      int64_t* workspace_size);
+#endif
 
 /**
  * @brief Queries the required halo workspace size, in elements, for a provided grid descriptor.
@@ -337,8 +486,13 @@ hipdecompResult_t hipdecompGetTransposeWorkspaceSize(hipdecompHandle_t handle, h
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetHaloWorkspaceSize(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, int32_t axis,
+                                              const int32_t halo_extents[], int64_t* workspace_size);
+#else
 hipdecompResult_t hipdecompGetHaloWorkspaceSize(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, int32_t axis,
                                                 const int32_t halo_extents[], int64_t* workspace_size);
+#endif
 
 /**
  * @brief Function to get size (in bytes) of a hipDecomp data type
@@ -347,7 +501,11 @@ hipdecompResult_t hipdecompGetHaloWorkspaceSize(hipdecompHandle_t handle, hipdec
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetDataTypeSize(cudecompDataType_t dtype, int64_t* dtype_size);
+#else
 hipdecompResult_t hipdecompGetDataTypeSize(hipdecompDataType_t dtype, int64_t* dtype_size);
+#endif
 
 /**
  * @brief Allocation function for hipDecomp workspaces
@@ -364,8 +522,13 @@ hipdecompResult_t hipdecompGetDataTypeSize(hipdecompDataType_t dtype, int64_t* d
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompMalloc(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void** buffer,
+                                size_t buffer_size_bytes);
+#else
 hipdecompResult_t hipdecompMalloc(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void** buffer,
                                   size_t buffer_size_bytes);
+#endif
 
 /**
  * @brief Deallocation function for hipDecomp workspaces
@@ -379,7 +542,11 @@ hipdecompResult_t hipdecompMalloc(hipdecompHandle_t handle, hipdecompGridDesc_t 
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompFree(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* buffer);
+#else
 hipdecompResult_t hipdecompFree(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* buffer);
+#endif
 
 // Convenience functions
 /**
@@ -389,7 +556,11 @@ hipdecompResult_t hipdecompFree(hipdecompHandle_t handle, hipdecompGridDesc_t gr
  * @return A string representation of the transpose communication backend. Will return string "ERROR" if
  * invalid backend value is provided.
  */
+#ifdef USE_CUDECOMP_NAMES
+const char* cudecompTransposeCommBackendToString(cudecompTransposeCommBackend_t comm_backend);
+#else
 const char* hipdecompTransposeCommBackendToString(hipdecompTransposeCommBackend_t comm_backend);
+#endif
 
 /**
  * @brief Function to get string name of halo communication backend.
@@ -398,7 +569,11 @@ const char* hipdecompTransposeCommBackendToString(hipdecompTransposeCommBackend_
  * @return A string representation of the halo communication backend. Will return string "ERROR" if
  * invalid backend value is provided.
  */
+#ifdef USE_CUDECOMP_NAMES
+const char* cudecompHaloCommBackendToString(cudecompHaloCommBackend_t comm_backend);
+#else
 const char* hipdecompHaloCommBackendToString(hipdecompHaloCommBackend_t comm_backend);
+#endif
 
 /**
  * @brief Queries the configuration used to create a grid descriptor.
@@ -408,8 +583,13 @@ const char* hipdecompHaloCommBackendToString(hipdecompHaloCommBackend_t comm_bac
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetGridDescConfig(cudecompHandle_t handle, cudecompGridDesc_t grid_desc,
+                                           cudecompGridDescConfig_t* config);
+#else
 hipdecompResult_t hipdecompGetGridDescConfig(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc,
                                              hipdecompGridDescConfig_t* config);
+#endif
 
 /**
  * @brief Function to retrieve the global rank of neighboring processes
@@ -425,8 +605,13 @@ hipdecompResult_t hipdecompGetGridDescConfig(hipdecompHandle_t handle, hipdecomp
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGetShiftedRank(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, int32_t axis,
+                                        int32_t dim, int32_t displacement, bool periodic, int32_t* shifted_rank);
+#else
 hipdecompResult_t hipdecompGetShiftedRank(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, int32_t axis,
                                           int32_t dim, int32_t displacement, bool periodic, int32_t* shifted_rank);
+#endif
 
 // Transpose functions
 /**
@@ -453,11 +638,18 @@ hipdecompResult_t hipdecompGetShiftedRank(hipdecompHandle_t handle, hipdecompGri
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompTransposeXToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompTransposeXToY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
                                          const int32_t input_halo_extents[], const int32_t output_halo_extents[],
                                          const int32_t input_padding[], const int32_t output_padding[],
                                          hipStream_t stream);
+#endif
 
 /**
  * @brief Function to transpose data from Y-axis aligned pencils to a Z-axis aligned pencils.
@@ -483,11 +675,18 @@ hipdecompResult_t hipdecompTransposeXToY(hipdecompHandle_t handle, hipdecompGrid
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompTransposeYToZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompTransposeYToZ(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
                                          const int32_t input_halo_extents[], const int32_t output_halo_extents[],
                                          const int32_t input_padding[], const int32_t output_padding[],
                                          hipStream_t stream);
+#endif
 
 /**
  * @brief Function to transpose data from Z-axis aligned pencils to a Y-axis aligned pencils.
@@ -513,11 +712,18 @@ hipdecompResult_t hipdecompTransposeYToZ(hipdecompHandle_t handle, hipdecompGrid
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompTransposeZToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompTransposeZToY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
                                          const int32_t input_halo_extents[], const int32_t output_halo_extents[],
                                          const int32_t input_padding[], const int32_t output_padding[],
                                          hipStream_t stream);
+#endif
 
 /**
  * @brief Function to transpose data from Y-axis aligned pencils to a X-axis aligned pencils.
@@ -543,11 +749,18 @@ hipdecompResult_t hipdecompTransposeZToY(hipdecompHandle_t handle, hipdecompGrid
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompTransposeYToX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompTransposeYToX(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
                                          const int32_t input_halo_extents[], const int32_t output_halo_extents[],
                                          const int32_t input_padding[], const int32_t output_padding[],
                                          hipStream_t stream);
+#endif
 
 // Halo functions
 /**
@@ -573,10 +786,16 @@ hipdecompResult_t hipdecompTransposeYToX(hipdecompHandle_t handle, hipdecompGrid
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompUpdateHalosX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompUpdateHalosX(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
                                         const bool halo_periods[], int32_t dim, const int32_t padding[],
                                         hipStream_t stream);
+#endif
 
 /**
  * @brief Function to perform halo communication of Y-axis aligned pencil data
@@ -600,10 +819,16 @@ hipdecompResult_t hipdecompUpdateHalosX(hipdecompHandle_t handle, hipdecompGridD
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompUpdateHalosY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompUpdateHalosY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
                                         const bool halo_periods[], int32_t dim, const int32_t padding[],
                                         hipStream_t stream);
+#endif
 
 /**
  * @brief Function to perform halo communication of Z-axis aligned pencil data
@@ -627,10 +852,16 @@ hipdecompResult_t hipdecompUpdateHalosY(hipdecompHandle_t handle, hipdecompGridD
  *
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompUpdateHalosZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
+#else
 hipdecompResult_t hipdecompUpdateHalosZ(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
                                         const bool halo_periods[], int32_t dim, const int32_t padding[],
                                         hipStream_t stream);
+#endif
 
 #ifdef __cplusplus
 }

@@ -30,6 +30,7 @@
 #include "internal/checks.h"
 #include "internal/comm_routines.h"
 #include "internal/hipdecomp_kernels.h"
+#include "internal/macros.h"
 #include "internal/performance.h"
 #include "internal/roctx.h"
 #include "internal/utils.h"

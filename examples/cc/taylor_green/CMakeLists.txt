@@ -19,6 +19,9 @@ target_link_libraries(tg PRIVATE MPI::MPI_CXX)
 target_link_libraries(tg PRIVATE hip::hipfft)
 target_link_libraries(tg PRIVATE hipdecomp)
 set_target_properties(tg PROPERTIES LINKER_LANGUAGE CXX)
+if(HIPDECOMP_USE_CUDECOMP_NAMES)
+  target_compile_definitions(tg PRIVATE USE_CUDECOMP_NAMES)
+endif()
 
 install(
   TARGETS tg

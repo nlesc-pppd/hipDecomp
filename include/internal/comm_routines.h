@@ -31,6 +31,7 @@
 
 #include "internal/checks.h"
 #include "internal/hipdecomp_kernels.h"
+#include "internal/macros.h"
 #include "internal/roctx.h"
 
 namespace hipdecomp {

@@ -41,6 +41,7 @@
 #include "hipdecomp.h"
 #include "internal/checks.h"
 #include "internal/graph.h"
+#include "internal/macros.h"
 
 namespace hipdecomp {
 typedef std::pair<std::array<unsigned char, 1>, unsigned int> mnnvl_info;

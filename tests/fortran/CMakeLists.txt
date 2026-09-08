@@ -34,6 +34,7 @@ foreach(tgt ${transpose_test_targets_f} ${halo_test_targets_f})
   target_include_directories(${tgt}
     PRIVATE
     ${CMAKE_BINARY_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../include
     ${MPI_Fortran_INCLUDE_DIRS}
   )
   target_link_libraries(${tgt} PRIVATE MPI::MPI_Fortran)
@@ -42,6 +43,9 @@ foreach(tgt ${transpose_test_targets_f} ${halo_test_targets_f})
   target_link_libraries(${tgt} PUBLIC hipdecomp_fort)
   target_compile_options(${tgt} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-cpp>)
   target_compile_options(${tgt} PRIVATE -O3)
+  if(HIPDECOMP_USE_CUDECOMP_NAMES)
+    target_compile_definitions(${tgt} PRIVATE USE_CUDECOMP_NAMES)
+  endif()
 endforeach()
 
 target_compile_definitions(transpose_test_R32_f PUBLIC R32)

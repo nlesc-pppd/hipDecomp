@@ -13,6 +13,8 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#include "internal/macros.h"
+
 module hipdecomp
   use, intrinsic :: iso_c_binding
   use, intrinsic :: iso_fortran_env, only: int64, real32, real64
@@ -146,7 +148,12 @@ module hipdecomp
   end interface hipdecompInit
 
   interface
-    function hipdecompInit_FC(handle, mpi_comm) bind(C, name="hipdecompInit_F") result(res)
+    function hipdecompInit_FC(handle, mpi_comm) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompInit_F") result(res)
+#else
+       bind(C, name="hipdecompInit_F") result(res)
+#endif
       import
       type(hipdecompHandle) :: handle
       integer, value :: mpi_comm
@@ -155,7 +162,12 @@ module hipdecomp
   end interface
 
   interface
-    function hipdecompFinalize(handle) bind(C, name="hipdecompFinalize") result(res)
+    function hipdecompFinalize(handle) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompFinalize") result(res)
+#else
+       bind(C, name="hipdecompFinalize") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       integer(c_int) :: res
@@ -164,7 +176,11 @@ module hipdecomp
 
   interface
     function hipdecompGridDescCreateC(handle, grid_desc, config, options) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompGridDescCreate") result(res)
+#else
        bind(C, name="hipdecompGridDescCreate") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc) :: grid_desc
@@ -176,7 +192,11 @@ module hipdecomp
 
   interface
     function hipdecompGridDescCreateC_nullopt(handle, grid_desc, config, options) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompGridDescCreate") result(res)
+#else
        bind(C, name="hipdecompGridDescCreate") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc) :: grid_desc
@@ -187,7 +207,12 @@ module hipdecomp
   end interface
 
   interface
-    function hipdecompGridDescDestroy(handle, grid_desc) bind(C, name="hipdecompGridDescDestroy") result(res)
+    function hipdecompGridDescDestroy(handle, grid_desc) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompGridDescDestroy") result(res)
+#else
+       bind(C, name="hipdecompGridDescDestroy") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -198,7 +223,11 @@ module hipdecomp
   ! hipdecompGridDescConfig creation/manipulation functions
   interface
     function hipdecompGridDescConfigSetDefaults(config) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGridDescConfigSetDefaults") result(res)
+#else
       bind(C, name="hipdecompGridDescConfigSetDefaults") result(res)
+#endif
       import
       type(hipdecompGridDescConfig) :: config
       integer(c_int) :: res
@@ -208,7 +237,11 @@ module hipdecomp
   ! hipdecompGridDescAutotuneOptions creation/manipulation functions
   interface
     function hipdecompGridDescAutotuneOptionsSetDefaultsC(options) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGridDescAutotuneOptionsSetDefaults") result(res)
+#else
       bind(C, name="hipdecompGridDescAutotuneOptionsSetDefaults") result(res)
+#endif
       import
       type(hipdecompGridDescAutotuneOptions) :: options
       integer(c_int) :: res
@@ -218,7 +251,11 @@ module hipdecomp
   ! General functions
   interface
     function hipdecompGetPencilInfoC(handle, grid_desc, pencil_info, axis, halo_extents, padding) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGetPencilInfo") result(res)
+#else
       bind(C, name="hipdecompGetPencilInfo") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -232,7 +269,11 @@ module hipdecomp
 
   interface
     function hipdecompGetGridDescConfigC(handle, grid_desc, config) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGetGridDescConfig") result(res)
+#else
       bind(C, name="hipdecompGetGridDescConfig") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -243,7 +284,11 @@ module hipdecomp
 
   interface
     function hipdecompGetTransposeWorkspaceSize(handle, grid_desc, workspace_size) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGetTransposeWorkspaceSize") result(res)
+#else
       bind(C, name="hipdecompGetTransposeWorkspaceSize") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -254,7 +299,11 @@ module hipdecomp
 
   interface
     function hipdecompGetHaloWorkspaceSizeC(handle, grid_desc, axis, halo_extents, workspace_size) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGetHaloWorkspaceSize") result(res)
+#else
       bind(C, name="hipdecompGetHaloWorkspaceSize") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -267,7 +316,11 @@ module hipdecomp
 
   interface
     function hipdecompMallocC(handle, grid_desc, buffer, buffer_size_bytes) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompMalloc") result(res)
+#else
       bind(C, name="hipdecompMalloc") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -283,7 +336,11 @@ module hipdecomp
 
   interface
     function hipdecompFreeC(handle, grid_desc, buffer) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompFree") result(res)
+#else
       bind(C, name="hipdecompFree") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -299,7 +356,11 @@ module hipdecomp
   ! Convenience functions
   interface
     function hipdecompTransposeCommBackendToStringC(comm_backend) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompTransposeCommBackendToString") result(res)
+#else
       bind(C, name="hipdecompTransposeCommBackendToString") result(res)
+#endif
       import
       integer(c_int), value :: comm_backend
       type(c_ptr) :: res
@@ -308,7 +369,11 @@ module hipdecomp
 
   interface
     function hipdecompHaloCommBackendToStringC(comm_backend) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompHaloCommBackendToString") result(res)
+#else
       bind(C, name="hipdecompHaloCommBackendToString") result(res)
+#endif
       import
       integer(c_int), value :: comm_backend
       type(c_ptr) :: res
@@ -316,7 +381,12 @@ module hipdecomp
   end interface
 
   interface
-    function hipdecompGetDataTypeSize(dtype, dtype_size) bind(C, name="hipdecompGetDataTypeSize") result(res)
+    function hipdecompGetDataTypeSize(dtype, dtype_size) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompGetDataTypeSize") result(res)
+#else
+       bind(C, name="hipdecompGetDataTypeSize") result(res)
+#endif
       import
       integer(c_int), value :: dtype
       integer(c_int64_t) :: dtype_size
@@ -326,7 +396,11 @@ module hipdecomp
 
   interface
     function hipdecompGetShiftedRankC(handle, grid_desc, axis, dim, displacement, periodic, shifted_rank) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompGetShiftedRank") result(res)
+#else
       bind(C, name="hipdecompGetShiftedRank") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -342,7 +416,11 @@ module hipdecomp
     function hipdecompTransposeXToY_C(handle, grid_desc, input, output, work, dtype, &
                                      input_halo_extents, output_halo_extents, input_padding, &
                                      output_padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompTransposeXToY") result(res)
+#else
       bind(C, name="hipdecompTransposeXToY") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -360,7 +438,11 @@ module hipdecomp
     function hipdecompTransposeYToZ_C(handle, grid_desc, input, output, work, dtype, &
                                      input_halo_extents, output_halo_extents, input_padding, &
                                      output_padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompTransposeYToZ") result(res)
+#else
       bind(C, name="hipdecompTransposeYToZ") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -378,7 +460,11 @@ module hipdecomp
     function hipdecompTransposeZToY_C(handle, grid_desc, input, output, work, dtype, &
                                      input_halo_extents, output_halo_extents, input_padding, &
                                      output_padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+       bind(C, name="cudecompTransposeZToY") result(res)
+#else
        bind(C, name="hipdecompTransposeZToY") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -396,7 +482,11 @@ module hipdecomp
     function hipdecompTransposeYToX_C(handle, grid_desc, input, output, work, dtype, &
                                      input_halo_extents, output_halo_extents, input_padding, &
                                      output_padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompTransposeYToX") result(res)
+#else
       bind(C, name="hipdecompTransposeYToX") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -414,7 +504,11 @@ module hipdecomp
   interface
     function hipdecompUpdateHalosX_C(handle, grid_desc, input, work, dtype, &
                                     halo_extents, halo_periods, dim, padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompUpdateHalosX") result(res)
+#else
       bind(C, name="hipdecompUpdateHalosX") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -433,7 +527,11 @@ module hipdecomp
   interface
     function hipdecompUpdateHalosY_C(handle, grid_desc, input, work, dtype, &
                                     halo_extents, halo_periods, dim, padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompUpdateHalosY") result(res)
+#else
       bind(C, name="hipdecompUpdateHalosY") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
@@ -452,7 +550,11 @@ module hipdecomp
   interface
     function hipdecompUpdateHalosZ_C(handle, grid_desc, input, work, dtype, &
                                     halo_extents, halo_periods, dim, padding, stream) &
+#ifdef USE_CUDECOMP_NAMES
+      bind(C, name="cudecompUpdateHalosZ") result(res)
+#else
       bind(C, name="hipdecompUpdateHalosZ") result(res)
+#endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc), value :: grid_desc
