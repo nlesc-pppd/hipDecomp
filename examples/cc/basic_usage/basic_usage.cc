@@ -30,6 +30,38 @@
 
 #include "hipdecomp.h"
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_TRANSPOSE_COMM_MPI_P2P CUDECOMP_TRANSPOSE_COMM_MPI_P2P
+#define HIPDECOMP_HALO_COMM_MPI CUDECOMP_HALO_COMM_MPI
+#define HIPDECOMP_DOUBLE CUDECOMP_DOUBLE
+
+#define hipdecompResult_t cudecompResult_t
+#define hipdecompPencilInfo_t cudecompPencilInfo_t
+#define hipdecompHandle_t cudecompHandle_t
+#define hipdecompGridDescConfig_t cudecompGridDescConfig_t
+#define hipdecompGridDesc_t cudecompGridDesc_t
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+#define hipdecompTransposeCommBackendToString cudecompTransposeCommBackendToString
+#define hipdecompHaloCommBackendToString cudecompHaloCommBackendToString
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+#define hipdecompGetHaloWorkspaceSize cudecompGetHaloWorkspaceSize
+#define hipdecompGetDataTypeSize cudecompGetDataTypeSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+#define hipdecompUpdateHalosX cudecompUpdateHalosX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 // Error checking macros
 #define CHECK_HIPDECOMP_EXIT(call)                                                                                     \
   do {                                                                                                                 \

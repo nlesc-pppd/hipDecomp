@@ -36,6 +36,37 @@
 
 #include <hipdecomp.h>
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_FLOAT CUDECOMP_FLOAT
+#define HIPDECOMP_FLOAT_COMPLEX CUDECOMP_FLOAT_COMPLEX
+#define HIPDECOMP_DOUBLE CUDECOMP_DOUBLE
+#define HIPDECOMP_DOUBLE_COMPLEX CUDECOMP_DOUBLE_COMPLEX
+
+#define hipdecompResult_t cudecompResult_t
+#define hipdecompPencilInfo_t cudecompPencilInfo_t
+#define hipdecompHandle_t cudecompHandle_t
+#define hipdecompGridDescConfig_t cudecompGridDescConfig_t
+#define hipdecompGridDesc_t cudecompGridDesc_t
+#define hipdecompGridDescAutotuneOptions_t cudecompGridDescAutotuneOptions_t
+#define hipdecompDataType_t cudecompDataType_t
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 #define PI (std::atan(1.0) * 4.0)
 
 // Error check macros
