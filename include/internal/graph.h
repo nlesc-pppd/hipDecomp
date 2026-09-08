@@ -27,6 +27,7 @@
 #include "hipdecomp.h"
 #include "internal/checks.h"
 #include "internal/hashes.h"
+#include "internal/macros.h"
 #include "internal/utils.h"
 
 namespace hipdecomp {

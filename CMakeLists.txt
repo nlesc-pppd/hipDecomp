@@ -13,6 +13,7 @@ option(HIPDECOMP_ENABLE_ROCTX "Enable ROCTx ranges" ON)
 #option(HIPDECOMP_ENABLE_NVSHMEM "Enable NVSHMEM" OFF)
 option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
 option(HIPDECOMP_ENABLE_COVERAGE "Enable code coverage in HIP and C++ sources" OFF)
+option(HIPDECOMP_USE_CUDECOMP_NAMES "Use cuDecomp naming for compatibility" OFF)
 
 # Use AMD Clang compilers by default
 find_program(CMAKE_CXX_COMPILER "amdclang++" REQUIRED)
@@ -134,6 +135,10 @@ if (NOT TEST_STD_FS_RESULT)
   target_link_libraries(HIPDECOMP PRIVATE -lstdc++fs)
 endif()
 
+if (HIPDECOMP_USE_CUDECOMP_NAMES)
+  target_compile_definitions(hipdecomp PRIVATE USE_CUDECOMP_NAMES)
+endif()
+
 if (HIPDECOMP_ENABLE_ROCTX)
   target_compile_definitions(hipdecomp PRIVATE ENABLE_ROCTX)
 endif()
@@ -199,6 +204,10 @@ if (HIPDECOMP_BUILD_FORTRAN)
     ${CMAKE_CURRENT_SOURCE_DIR}/src/hipdecomp_m.f90
   )
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/hipdecomp_m.f90 PROPERTIES LANGUAGE Fortran)
+
+  if (HIPDECOMP_USE_CUDECOMP_NAMES)
+    target_compile_definitions(hipdecomp_fort PRIVATE USE_CUDECOMP_NAMES)
+  endif()
 
   install(
     TARGETS hipdecomp_fort

@@ -31,6 +31,7 @@
 
 #include "hipdecomp.h"
 #include "internal/checks.h"
+#include "internal/macros.h"
 #include "internal/performance.h"
 
 namespace hipdecomp {

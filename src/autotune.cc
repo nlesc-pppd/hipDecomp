@@ -33,6 +33,7 @@
 #include "internal/checks.h"
 #include "internal/common.h"
 #include "internal/halo.h"
+#include "internal/macros.h"
 #include "internal/performance.h"
 #include "internal/transpose.h"
 

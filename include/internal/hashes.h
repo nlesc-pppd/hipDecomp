@@ -25,6 +25,7 @@
 #include <utility>
 
 #include "hipdecomp.h"
+#include "internal/macros.h"
 
 #define MAGIC 0x9e3779b9
 

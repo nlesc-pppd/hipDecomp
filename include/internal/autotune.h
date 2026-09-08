@@ -20,6 +20,7 @@
 #define HIPDECOMP_AUTOTUNE_H
 
 #include "hipdecomp.h"
+#include "internal/macros.h"
 
 namespace hipdecomp {
 void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc,

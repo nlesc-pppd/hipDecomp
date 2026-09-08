@@ -22,6 +22,7 @@
 #include <complex>
 
 #include "hipdecomp.h"
+#include "internal/macros.h"
 
 inline bool operator==(const hipdecompPencilInfo_t& a, const hipdecompPencilInfo_t& b) {
   if (a.size != b.size) return false;

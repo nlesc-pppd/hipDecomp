@@ -24,6 +24,7 @@
 #include <string>
 
 #include "hipdecomp.h"
+#include "internal/macros.h"
 
 // Useful defines for throwing with line/file info
 #define THROW_INVALID_USAGE(msg)                                                                                       \

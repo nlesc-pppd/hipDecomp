@@ -29,6 +29,7 @@
 #include <rccl/rccl.h>
 
 #include "internal/exceptions.h"
+#include "internal/macros.h"
 
 // Checks with exception throwing (internal usage)
 
