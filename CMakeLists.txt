@@ -204,6 +204,7 @@ if (HIPDECOMP_BUILD_FORTRAN)
     ${CMAKE_CURRENT_SOURCE_DIR}/src/hipdecomp_m.f90
   )
   set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/src/hipdecomp_m.f90 PROPERTIES LANGUAGE Fortran)
+  target_include_directories(hipdecomp_fort PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
   if (HIPDECOMP_USE_CUDECOMP_NAMES)
     target_compile_definitions(hipdecomp_fort PRIVATE USE_CUDECOMP_NAMES)

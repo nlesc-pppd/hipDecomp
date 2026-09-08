@@ -144,6 +144,7 @@ typedef enum {
   HIPDECOMP_RESULT_MPI_ERROR = 6,  ///< An error occurred in the MPI library
   HIPDECOMP_RESULT_NCCL_ERROR = 7, ///< An error occured in the NCCL library
   HIPDECOMP_RESULT_NVSHMEM_ERROR = 8, ///< An error occured in the NVSHMEM library
+  HIPDECOMP_RESULT_NVML_ERROR = 9     ///< An error occurred in the NVML library (keeping for cuDecomp compatibility)
 } hipdecompResult_t;
 #endif
 

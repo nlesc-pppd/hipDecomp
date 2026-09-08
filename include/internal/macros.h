@@ -50,6 +50,7 @@
 #define HIPDECOMP_RESULT_MPI_ERROR CUDECOMP_RESULT_MPI_ERROR
 #define HIPDECOMP_RESULT_NCCL_ERROR CUDECOMP_RESULT_NCCL_ERROR
 #define HIPDECOMP_RESULT_NVSHMEM_ERROR CUDECOMP_RESULT_NVSHMEM_ERROR
+#define HIPDECOMP_RESULT_NVML_ERROR CUDECOMP_RESULT_NVML_ERROR
 #define hipdecompResult_t cudecompResult_t
 #define hipdecompHandle_t cudecompHandle_t
 #define hipdecompGridDesc_t cudecompGridDesc_t
@@ -83,6 +84,18 @@
 #define hipdecompUpdateHalosX cudecompUpdateHalosX
 #define hipdecompUpdateHalosY cudecompUpdateHalosY
 #define hipdecompUpdateHalosZ cudecompUpdateHalosZ
+#define __hipdecomp_copy_c_string __cudecomp_copy_c_string
+#define hipdecompMallocR4 cudecompMallocR4
+#define hipdecompMallocR8 cudecompMallocR8
+#define hipdecompMallocC4 cudecompMallocC4
+#define hipdecompMallocC8 cudecompMallocC8
+#define hipdecompFreeR4 cudecompFreeR4
+#define hipdecompFreeR8 cudecompFreeR8
+#define hipdecompFreeC4 cudecompFreeC4
+#define hipdecompFreeC8 cudecompFreeC8
+#define hipdecompInit_MPI_F cudecompInit_MPI_F
+#define hipdecompInit_MPI_F08 cudecompInit_MPI_F08
+
 #endif // USE_CUDECOMP_NAMES
 
 #endif // HIPDECOMP_MACROS_H
