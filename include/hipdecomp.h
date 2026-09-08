@@ -108,10 +108,7 @@ typedef enum {
  * @brief This enum defines the modes available for process grid autotuning.
  */
 #ifdef USE_CUDECOMP_NAMES
-typedef enum {
-  CUDECOMP_AUTOTUNE_GRID_TRANSPOSE = 0,
-  CUDECOMP_AUTOTUNE_GRID_HALO = 1
-} cudecompAutotuneGridMode_t;
+typedef enum { CUDECOMP_AUTOTUNE_GRID_TRANSPOSE = 0, CUDECOMP_AUTOTUNE_GRID_HALO = 1 } cudecompAutotuneGridMode_t;
 #else
 typedef enum {
   HIPDECOMP_AUTOTUNE_GRID_TRANSPOSE = 0, ///< Use transpose communication to autotune process grid dimensions
@@ -641,11 +638,10 @@ hipdecompResult_t hipdecompGetShiftedRank(hipdecompHandle_t handle, hipdecompGri
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompTransposeXToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                       void* output, void* work, cudecompDataType_t dtype,
-                                       const int32_t input_halo_extents[], const int32_t output_halo_extents[],
-                                       const int32_t input_padding[], const int32_t output_padding[],
-                                       hipStream_t stream);
+cudecompResult_t cudecompTransposeXToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompTransposeXToY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
@@ -679,11 +675,10 @@ hipdecompResult_t hipdecompTransposeXToY(hipdecompHandle_t handle, hipdecompGrid
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompTransposeYToZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                       void* output, void* work, cudecompDataType_t dtype,
-                                       const int32_t input_halo_extents[], const int32_t output_halo_extents[],
-                                       const int32_t input_padding[], const int32_t output_padding[],
-                                       hipStream_t stream);
+cudecompResult_t cudecompTransposeYToZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompTransposeYToZ(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
@@ -717,11 +712,10 @@ hipdecompResult_t hipdecompTransposeYToZ(hipdecompHandle_t handle, hipdecompGrid
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompTransposeZToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                       void* output, void* work, cudecompDataType_t dtype,
-                                       const int32_t input_halo_extents[], const int32_t output_halo_extents[],
-                                       const int32_t input_padding[], const int32_t output_padding[],
-                                       hipStream_t stream);
+cudecompResult_t cudecompTransposeZToY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompTransposeZToY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
@@ -755,11 +749,10 @@ hipdecompResult_t hipdecompTransposeZToY(hipdecompHandle_t handle, hipdecompGrid
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompTransposeYToX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                       void* output, void* work, cudecompDataType_t dtype,
-                                       const int32_t input_halo_extents[], const int32_t output_halo_extents[],
-                                       const int32_t input_padding[], const int32_t output_padding[],
-                                       hipStream_t stream);
+cudecompResult_t cudecompTransposeYToX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* output,
+                                       void* work, cudecompDataType_t dtype, const int32_t input_halo_extents[],
+                                       const int32_t output_halo_extents[], const int32_t input_padding[],
+                                       const int32_t output_padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompTransposeYToX(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                          void* output, void* work, hipdecompDataType_t dtype,
@@ -793,10 +786,9 @@ hipdecompResult_t hipdecompTransposeYToX(hipdecompHandle_t handle, hipdecompGrid
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompUpdateHalosX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                      void* work, cudecompDataType_t dtype, const int32_t halo_extents[],
-                                      const bool halo_periods[], int32_t dim, const int32_t padding[],
-                                      hipStream_t stream);
+cudecompResult_t cudecompUpdateHalosX(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompUpdateHalosX(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
@@ -827,10 +819,9 @@ hipdecompResult_t hipdecompUpdateHalosX(hipdecompHandle_t handle, hipdecompGridD
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompUpdateHalosY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                      void* work, cudecompDataType_t dtype, const int32_t halo_extents[],
-                                      const bool halo_periods[], int32_t dim, const int32_t padding[],
-                                      hipStream_t stream);
+cudecompResult_t cudecompUpdateHalosY(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompUpdateHalosY(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
@@ -861,10 +852,9 @@ hipdecompResult_t hipdecompUpdateHalosY(hipdecompHandle_t handle, hipdecompGridD
  * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
  */
 #ifdef USE_CUDECOMP_NAMES
-cudecompResult_t cudecompUpdateHalosZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input,
-                                      void* work, cudecompDataType_t dtype, const int32_t halo_extents[],
-                                      const bool halo_periods[], int32_t dim, const int32_t padding[],
-                                      hipStream_t stream);
+cudecompResult_t cudecompUpdateHalosZ(cudecompHandle_t handle, cudecompGridDesc_t grid_desc, void* input, void* work,
+                                      cudecompDataType_t dtype, const int32_t halo_extents[], const bool halo_periods[],
+                                      int32_t dim, const int32_t padding[], hipStream_t stream);
 #else
 hipdecompResult_t hipdecompUpdateHalosZ(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc, void* input,
                                         void* work, hipdecompDataType_t dtype, const int32_t halo_extents[],
