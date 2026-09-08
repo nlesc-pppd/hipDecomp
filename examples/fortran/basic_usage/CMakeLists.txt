@@ -28,6 +28,9 @@ foreach(tgt ${basic_usage_targets_f})
   target_link_libraries(${tgt} PRIVATE hipdecomp)
   target_link_libraries(${tgt} PRIVATE hipdecomp_fort)
   target_compile_options(${tgt} PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-cpp>)
+  if(HIPDECOMP_USE_CUDECOMP_NAMES)
+    target_compile_definitions(${tgt} PRIVATE USE_CUDECOMP_NAMES)
+  endif()
 endforeach()
 
 install(

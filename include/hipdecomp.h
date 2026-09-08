@@ -152,7 +152,7 @@ typedef enum {
  * @brief A pointer to a hipDecomp internal handle structure.
  */
 #ifdef USE_CUDECOMP_NAMES
-typedef struct hipdecompHandle* cudecompHandle_t;
+typedef struct cudecompHandle* cudecompHandle_t;
 #else
 typedef struct hipdecompHandle* hipdecompHandle_t;
 #endif
@@ -161,7 +161,7 @@ typedef struct hipdecompHandle* hipdecompHandle_t;
  * @brief A pointer to a hipDecomp internal grid descriptor structure.
  */
 #ifdef USE_CUDECOMP_NAMES
-typedef struct hipdecompGridDesc* cudecompGridDesc_t;
+typedef struct cudecompGridDesc* cudecompGridDesc_t;
 #else
 typedef struct hipdecompGridDesc* hipdecompGridDesc_t;
 #endif
