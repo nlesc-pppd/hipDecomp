@@ -809,7 +809,7 @@ contains
     type(c_ptr) :: cstr
 
     cstr = hipdecompTransposeCommBackendToStringC(comm_backend)
-    call __hipdecomp_copy_c_string(cstr, res)
+    call hipdecomp_copy_c_string(cstr, res)
   end function hipdecompTransposeCommBackendToString
 
   function hipdecompHaloCommBackendToString(comm_backend) result(res)
@@ -820,7 +820,7 @@ contains
     integer(c_int) :: csize
 
     cstr = hipdecompHaloCommBackendToStringC(comm_backend)
-    call __hipdecomp_copy_c_string(cstr, res)
+    call hipdecomp_copy_c_string(cstr, res)
   end function hipdecompHaloCommBackendToString
 
   function hipdecompGetShiftedRank(handle, grid_desc, axis, dim, displacement, periodic, shifted_rank) &
@@ -1082,7 +1082,7 @@ contains
   end function hipdecompUpdateHalosZ
 
   ! Helper function to copy string
-  subroutine __hipdecomp_copy_c_string(cstr, fstr)
+  subroutine hipdecomp_copy_c_string(cstr, fstr)
     implicit none
     type(c_ptr) :: cstr
     character(len=:), allocatable :: fstr
@@ -1099,6 +1099,6 @@ contains
     else
       fstr = ' '
     endif
-  end subroutine __hipdecomp_copy_c_string
+  end subroutine hipdecomp_copy_c_string
 
 end module hipdecomp
