@@ -191,19 +191,18 @@ module hipdecomp
   end interface
 
   interface
-    function hipdecompGridDescCreateC_nullopt(handle, grid_desc, config, options) &
+    function hipdecompGridDescCreateNullOptC(handle, grid_desc, config) &
 #ifdef USE_CUDECOMP_NAMES
-       bind(C, name="cudecompGridDescCreate") result(res)
+       bind(C, name="cudecompGridDescCreateNullOpt") result(res)
 #else
-       bind(C, name="hipdecompGridDescCreate") result(res)
+       bind(C, name="hipdecompGridDescCreateNullOpt") result(res)
 #endif
       import
       type(hipdecompHandle), value :: handle
       type(hipdecompGridDesc) :: grid_desc
       type(hipdecompGridDescConfig) :: config
-      type(c_ptr), value :: options
       integer(c_int) :: res
-    end function hipdecompGridDescCreateC_nullopt
+    end function hipdecompGridDescCreateNullOptC
   end interface
 
   interface
@@ -636,7 +635,7 @@ contains
       ! Adjust halo axis entry for one-based axis indexing
       options%halo_axis = options%halo_axis + 1
     else
-      res = hipdecompGridDescCreateC_nullopt(handle, grid_desc, config, C_NULL_PTR)
+      res = hipdecompGridDescCreateNullOptC(handle, grid_desc, config)
     endif
 
     ! Adjust transpose mem order entries for one-based indexing
