@@ -30,7 +30,7 @@ else()
   # Use AMD LLVM compilers by default
   # Compilers
   set(DEFAULT_CXX_COMPILER "amdclang++")
-  set(DEFAULT_HIP_COMPILER "hipcc")
+  set(DEFAULT_HIP_COMPILER "amdclang++")
   set(DEFAULT_Fortran_COMPILER "amdflang")
   # Flags
   set(FORTRAN_COMPILE_OPTIONS -cpp)
