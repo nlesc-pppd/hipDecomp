@@ -281,17 +281,17 @@ module transpose_HIPDECOMP_DOUBLE_COMPLEX_mod
         case('--acx')
           read(args(i+1), *) arg
           read(arg, *) iarg
-          axis_contiguous(1) = iarg
+          axis_contiguous(1) = (iarg == 1)
           skip_count = 1
         case('--acy')
           read(args(i+1), *) arg
           read(arg, *) iarg
-          axis_contiguous(2) = iarg
+          axis_contiguous(2) = (iarg == 1)
           skip_count = 1
         case('--acz')
           read(args(i+1), *) arg
           read(arg, *) iarg
-          axis_contiguous(3) = iarg
+          axis_contiguous(3) = (iarg == 1)
           skip_count = 1
         case('--gd')
           do j = 1, 3
@@ -628,10 +628,10 @@ program main
   allocate(failed_cases(size(testcases)))
 
   t0 = MPI_Wtime()
-  if (using_testfile .and. rank == 0) write(*,"('Running ', i0, ' tests...')"), size(testcases)
+  if (using_testfile .and. rank == 0) write(*,"('Running ', i0, ' tests...')") size(testcases)
   call get_command_argument(0, binname)
   do i = 1, size(testcases)
-    if (using_testfile .and. rank == 0) write(*, "('command: ', A, ' ', A)"), trim(binname), trim(testcases(i))
+    if (using_testfile .and. rank == 0) write(*, "('command: ', A, ' ', A)") trim(binname), trim(testcases(i))
 
     res = run_test(testcases(i), using_testfile)
     if (rank == 0) then
@@ -651,7 +651,7 @@ program main
     call MPI_Barrier(MPI_COMM_WORLD, ierr)
     if (using_testfile .and. mod(i, 10) == 0) then
       if (rank == 0) then
-        write(*, "('Completed ', i0, '/', i0, ' tests, running time ', f0.8, 's')"), i, size(testcases), MPI_Wtime() - t0
+        write(*, "('Completed ', i0, '/', i0, ' tests, running time ', f0.8, 's')") i, size(testcases), MPI_Wtime() - t0
       endif
     endif
   enddo
@@ -659,13 +659,13 @@ program main
   retcode = 0
   if (using_testfile) then
     if (rank == 0) then
-      write(*, "('Completed all tests, running time ', f0.8, ' s')"), MPI_Wtime() - t0
+      write(*, "('Completed all tests, running time ', f0.8, ' s')") MPI_Wtime() - t0
       if (nfailed == 0) then
-        write(*, "(A)"), "Passed all tests."
+        write(*, "(A)") "Passed all tests."
       else
-        write(*, "('Failed ', i0, '/', i0, ' tests. Failing cases:')"), nfailed, size(testcases)
+        write(*, "('Failed ', i0, '/', i0, ' tests. Failing cases:')") nfailed, size(testcases)
         do i = 1, nfailed
-          write(*, "(A, ' ', A)"), trim(binname), trim(failed_cases(i))
+          write(*, "(A, ' ', A)") trim(binname), trim(failed_cases(i))
         enddo
       endif
     endif
