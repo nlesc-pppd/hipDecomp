@@ -25,7 +25,7 @@ if(DEFINED ENV{CRAYPE_DIR})
   set(DEFAULT_HIP_COMPILER "$ENV{CRAYPE_DIR}/bin/CC")
   set(DEFAULT_Fortran_COMPILER "$ENV{CRAYPE_DIR}/bin/ftn")
   # Flags
-  set(FORTRAN_COMPILE_OPTIONS -eZ -ef)
+  set(FORTRAN_COMPILE_OPTIONS -eZ -ef -M969)
 else()
   # Use AMD LLVM compilers by default
   # Compilers
