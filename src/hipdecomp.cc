@@ -642,6 +642,11 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
   return HIPDECOMP_RESULT_SUCCESS;
 }
 
+hipdecompResult_t hipdecompGridDescCreateNullOpt(hipdecompHandle_t handle, hipdecompGridDesc_t* grid_desc_in,
+                                                 hipdecompGridDescConfig_t* config) {
+  return hipdecompGridDescCreate(handle, grid_desc_in, config, nullptr);
+}
+
 hipdecompResult_t hipdecompGridDescDestroy(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc) {
   using namespace hipdecomp;
   try {

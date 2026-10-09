@@ -15,25 +15,44 @@ option(HIPDECOMP_BUILD_EXTRAS "Build benchmark, examples, and tests" OFF)
 option(HIPDECOMP_ENABLE_COVERAGE "Enable code coverage in HIP and C++ sources" OFF)
 option(HIPDECOMP_USE_CUDECOMP_NAMES "Use cuDecomp naming for compatibility" OFF)
 
-# Use AMD Clang compilers by default
-find_program(CMAKE_CXX_COMPILER "amdclang++" REQUIRED)
-
-if (HIPDECOMP_BUILD_FORTRAN)
-  find_program(HIP_Fortran_BIN "amdflang" REQUIRED)
-  set(CMAKE_Fortran_COMPILER ${HIP_Fortran_BIN})
+# Default to Cray compiler wrappers if Cray PE is detected
+set(CRAY_ENV FALSE)
+if(DEFINED ENV{CRAYPE_DIR})
+  set(CRAY_ENV TRUE)
+  message("Cray programming environment detected, using Cray compiler wrappers as default")
+  # Compilers
+  set(DEFAULT_CXX_COMPILER "$ENV{CRAYPE_DIR}/bin/CC")
+  set(DEFAULT_HIP_COMPILER "$ENV{CRAYPE_DIR}/bin/CC")
+  set(DEFAULT_Fortran_COMPILER "$ENV{CRAYPE_DIR}/bin/ftn")
+  # Flags
+  set(FORTRAN_COMPILE_OPTIONS -eZ -ef -M969)
+else()
+  # Use AMD LLVM compilers by default
+  # Compilers
+  set(DEFAULT_CXX_COMPILER "amdclang++")
+  set(DEFAULT_HIP_COMPILER "amdclang++")
+  set(DEFAULT_Fortran_COMPILER "amdflang")
+  # Flags
+  set(FORTRAN_COMPILE_OPTIONS -cpp)
+  # Locate and use HIP CMake configuration
+  find_program(HIPCC "hipcc" REQUIRED)
+  file(REAL_PATH ${HIPCC} HIPCC)
+  string(REPLACE "bin/hipcc" "lib/cmake" HIP_CMAKE_DIR ${HIPCC})
+  set(CMAKE_PREFIX_PATH ${HIP_CMAKE_DIR})
 endif()
 
-# Locate and use HIP CMake configuration
-find_program(HIPCC "hipcc" REQUIRED)
-file(REAL_PATH ${HIPCC} HIPCC)
-string(REPLACE "bin/hipcc" "lib/cmake" HIP_CMAKE_DIR ${HIPCC})
-set(CMAKE_PREFIX_PATH ${HIP_CMAKE_DIR})
+if (NOT DEFINED CMAKE_CXX_COMPILER)
+  find_program(CMAKE_CXX_COMPILER "${DEFAULT_CXX_COMPILER}" REQUIRED)
+endif()
+if (NOT DEFINED CMAKE_HIP_COMPILER)
+  find_program(CMAKE_HIP_COMPILER "${DEFAULT_HIP_COMPILER}" REQUIRED)
+endif()
 
-# Limit optimization levels of CPU code compilation
-set(CMAKE_CXX_FLAGS_RELEASE "-O1 -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O1 -g -DNDEBUG")
-set(CMAKE_Fortran_FLAGS_RELEASE "-O1 -DNDEBUG")
-set(CMAKE_Fortran_FLAGS_RELWITHDEBINFO "-O1 -g -DNDEBUG")
+if (HIPDECOMP_BUILD_FORTRAN)
+  if (NOT DEFINED CMAKE_Fortran_COMPILER)
+    find_program(CMAKE_Fortran_COMPILER "${DEFAULT_Fortran_COMPILER}" REQUIRED)
+  endif()
+endif()
 
 if (HIPDECOMP_BUILD_FORTRAN)
   set(LANGS CXX HIP Fortran)
@@ -46,47 +65,24 @@ project(HIPDECOMP LANGUAGES ${LANGS})
 # Set up HIP compute targets. Must be done before find_package(HIP). Default: native
 set(CMAKE_HIP_ARCHITECTURES ${CMAKE_HIP_ARCHITECUTRES} CACHE STRING "List of HIP compute targets")
 set(GPU_TARGETS ${CMAKE_HIP_ARCHITECTURES} CACHE STRING "List of HIP compute targets")
+set(AMDGPU_TARGETS ${CMAKE_HIP_ARCHITECTURES} CACHE STRING "List of HIP compute targets")
 
-# HIP
 find_package(HIP REQUIRED)
-
-# Detect if Cray compiler wrappers are available to assess if in Cray environment.
-# We do not use the Cray compiler wrappers directly for greater flexibility.
-find_program(CRAY_CC_BIN "CC")
-
-if (CRAY_CC_BIN)
-  message(STATUS "Found Cray CC wrapper. Compiling for Cray programming environment.")
-endif()
-
-# MPI
 find_package(MPI REQUIRED)
-
-if (CRAY_CC_BIN)
-  # FindMPI does not include Cray GTL (e.g. GPU-aware MPI) libs
-  # automatically in Cray environment. Locate it to include in linking.
-  string(REPLACE ":" ";" CRAY_LIB_PATHS $ENV{CRAY_LD_LIBRARY_PATH})
-  find_library(CRAY_MPI_GTL_HIP_LIBRARY REQUIRED
-    NAMES mpi_gtl_hsa
-    HINTS ${CRAY_LIB_PATHS}
-  )
-
-  message(STATUS "Found Cray GTL library: " ${CRAY_MPI_GTL_HIP_LIBRARY})
-endif()
-
-# Get RCCL library
 find_package(rccl REQUIRED)
 
 if (HIPDECOMP_ENABLE_ROCSHMEM)
-  # Get ROCSHMEM library
   find_package(rocshmem REQUIRED)
 endif()
 
 if (HIPDECOMP_ENABLE_ROCTX)
-  # Get rocprofiler-sdk-roctx library
   find_package(rocprofiler-sdk-roctx REQUIRED)
 endif()
 
 if(HIPDECOMP_ENABLE_COVERAGE)
+  if(CRAY_ENV)
+    message(ERROR "Coverage is not supported when using Cray compilers")
+  endif()
   add_compile_options($<$<COMPILE_LANGUAGE:CXX,HIP>:-fprofile-instr-generate$<SEMICOLON>-fcoverage-mapping>)
   add_link_options($<$<LINK_LANGUAGE:CXX,HIP>:-fprofile-instr-generate$<SEMICOLON>-fcoverage-mapping>)
 endif()
@@ -197,7 +193,7 @@ if (HIPDECOMP_BUILD_FORTRAN)
   set_target_properties(hipdecomp_fort PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
   set_target_properties(hipdecomp_fort PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/include)
   set_target_properties(hipdecomp_fort PROPERTIES LINKER_LANGUAGE Fortran)
-  target_compile_options(hipdecomp_fort PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:-cpp>)
+  target_compile_options(hipdecomp_fort PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${FORTRAN_COMPILE_OPTIONS}>)
   target_sources(
     hipdecomp_fort
     PRIVATE

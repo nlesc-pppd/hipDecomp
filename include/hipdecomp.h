@@ -379,6 +379,26 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
 #endif
 
 /**
+ * @brief Creates a hipDecomp grid descriptor for use with hipDecomp functions, without options argument
+ * @details This function passes a null pointer as hipdecompGridDescAutotuneOptions_t and is otherwise
+ * identical to cudecompGridDescCreate. This function exists for hipDecomp initialization in Fortran.
+ * @param[in] handle The initialized hipDecomp library handle
+ * @param[out] grid_desc A pointer to an uninitialized hipdecompGridDesc_t
+ * @param[in,out] config A pointer to a populated hipdecompGridDescConfig_t structure. This config structure defines
+ * the required attributes of the decomposition. On successful exit, fields in this structure may be updated to reflect
+ * autotuning results.
+ *
+ * @return HIPDECOMP_RESULT_SUCCESS on success or error code on failure.
+ */
+#ifdef USE_CUDECOMP_NAMES
+cudecompResult_t cudecompGridDescCreateNullOpt(cudecompHandle_t handle, cudecompGridDesc_t* grid_desc,
+                                               cudecompGridDescConfig_t* config);
+#else
+hipdecompResult_t hipdecompGridDescCreateNullOpt(hipdecompHandle_t handle, hipdecompGridDesc_t* grid_desc,
+                                                 hipdecompGridDescConfig_t* config);
+#endif
+
+/**
  * @brief Destroys a hipDecomp grid descriptor and frees associated resources.
  * @param[in] handle The initialized hipDecomp library handle
  * @param[in] grid_desc A hipDecomp grid descriptor

@@ -71,6 +71,7 @@
 #define hipdecompInit_MPI_F08 cudecompInit_MPI_F08
 #define hipdecompFinalize cudecompFinalize
 #define hipdecompGridDescCreate cudecompGridDescCreate
+#define hipdecompGridDescCreateNullOpt cudecompGridDescCreateNullOpt
 #define hipdecompGridDescDestroy cudecompGridDescDestroy
 #define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
 #define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
@@ -99,7 +100,7 @@
 #define hipdecompUpdateHalosX cudecompUpdateHalosX
 #define hipdecompUpdateHalosY cudecompUpdateHalosY
 #define hipdecompUpdateHalosZ cudecompUpdateHalosZ
-#define __hipdecomp_copy_c_string __cudecomp_copy_c_string
+#define hipdecomp_copy_c_string cudecomp_copy_c_string
 
 #endif // USE_CUDECOMP_NAMES
 
