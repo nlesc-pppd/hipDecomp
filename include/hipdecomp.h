@@ -392,10 +392,10 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
  */
 #ifdef USE_CUDECOMP_NAMES
 cudecompResult_t cudecompGridDescCreateNullOpt(cudecompHandle_t handle, cudecompGridDesc_t* grid_desc,
-                                        cudecompGridDescConfig_t* config);
+                                               cudecompGridDescConfig_t* config);
 #else
 hipdecompResult_t hipdecompGridDescCreateNullOpt(hipdecompHandle_t handle, hipdecompGridDesc_t* grid_desc,
-                                          hipdecompGridDescConfig_t* config);
+                                                 hipdecompGridDescConfig_t* config);
 #endif
 
 /**
