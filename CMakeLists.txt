@@ -215,7 +215,7 @@ if (HIPDECOMP_BUILD_FORTRAN)
 endif()
 
 if (HIPDECOMP_BUILD_EXTRAS)
-  # add_subdirectory(benchmark)
+  add_subdirectory(benchmark)
 
   add_subdirectory(tests/cc)
   add_subdirectory(examples/cc/basic_usage)

@@ -2,7 +2,7 @@
 # Runs all configurations and checks errors.
 benchmark_base_test: &benchmark_base_test
   env_vars :
-    NVSHMEM_DISABLE_CUDA_VMM: 1
+    NVSHMEM_DISABLE_HIP_VMM: 1
     NVSHMEM_DISABLE_NCCL: 1
 
   args : ['backend']
