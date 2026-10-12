@@ -26,9 +26,10 @@
 ! on domain 0 <= x <= 1, 0 <= y <= 1
 
 program main
-  use hipfor
+  use hipfort
+  use hipfort_check
+  use hipfort_hipfft
   use hipdecomp
-  use hipfft
   use mpi
 
   implicit none
@@ -50,11 +51,11 @@ program main
   real(8) :: hx, hy, hz
   ! wavenumbers
   real(8), allocatable :: kx(:), ky(:), kz(:)
-  real(8), device, allocatable :: kx_d(:), ky_d(:), kz_d(:)
+  real(8), pointer :: kx_d(:), ky_d(:), kz_d(:)
 
   complex(8), allocatable :: phi(:), ua(:,:,:)
-  complex(8), device, allocatable :: phi_d(:)
-  complex(8), pointer, device, contiguous :: work_d(:)
+  complex(8), pointer :: phi_d(:)
+  complex(8), pointer, contiguous :: work_d(:)
 
   ! MPI
   integer :: rank, ranks, ierr
@@ -73,7 +74,7 @@ program main
   integer(8) :: nElemX, nElemY, nElemZ, nElemWork
 
   ! HIPFFT
-  integer :: planX, planY, planZ
+  type(c_ptr) :: planX, planY, planZ
   integer :: batchsize
   integer :: status
 
@@ -234,6 +235,7 @@ program main
      kx(i) = (i-1-nx)*(twoPi/Lx)
   enddo
   allocate(kx_d, source=kx)
+  call hipCheck(hipMalloc(kx_d, source=kx))
 
   do j = 1, ny/2
      ky(j) = (j-1)*(twoPi/Ly)
@@ -242,6 +244,7 @@ program main
      ky(j) = (j-1-ny)*(twoPi/Ly)
   enddo
   allocate(ky_d, source=ky)
+  call hipCheck(hipMalloc(ky_d, source=ky))
 
   do k = 1, nz/2
      kz(k) = (k-1)*(twoPi/Lz)
@@ -250,11 +253,14 @@ program main
      kz(k) = (k-1-nz)*(twoPi/Lz)
   enddo
   allocate(kz_d, source=kz)
+  call hipCheck(hipMalloc(kz_d, source=kz))
 
   ! allocate arrays
 
   allocate(phi(max(nElemX, nElemY, nElemZ)))
   allocate(phi_d, mold=phi)
+  call hipCheck(hipMalloc(phi_d, mold=phi))
+  
   allocate(ua(nx, piX%shape(2), piX%shape(3)))
   CHECK_HIPDECOMP_EXIT(hipdecompMalloc(handle, grid_desc, work_d, nElemWork))
 
@@ -297,7 +303,7 @@ program main
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Z forward error: ', status
 
   block
-    complex(8), device, pointer :: phi3d(:,:,:)
+    complex(8), pointer :: phi3d(:,:,:)
     real(8) :: k2
     integer :: il, jl, ig, jg
     integer :: offsets(3), xoff, yoff
@@ -306,7 +312,7 @@ program main
     np(piZ%order(1)) = piZ%shape(1)
     np(piZ%order(2)) = piZ%shape(2)
     np(piZ%order(3)) = piZ%shape(3)
-    call c_f_pointer(c_devloc(phi_d), phi3d, piZ%shape)
+    call c_f_pointer(c_loc(phi_d), phi3d, piZ%shape)
 
 
     ! divide by -K**2, and normalize
@@ -389,8 +395,12 @@ program main
 
   deallocate(x, y, z)
   deallocate(kx, ky, kz)
-  deallocate(kx_d, ky_d, kz_d)
-  deallocate(phi, phi_d, ua)
+  deallocate(phi, ua)
+
+  call hipCheck(hipFree(kx_d))
+  call hipCheck(hipFree(ky_d))
+  call hipCheck(hipFree(kz_d))
+  call hipCheck(hipFree(phi_d))
 
   CHECK_HIPDECOMP_EXIT(hipdecompFree(handle, grid_desc, work_d))
   CHECK_HIPDECOMP_EXIT(hipdecompGridDescDestroy(handle, grid_desc))
