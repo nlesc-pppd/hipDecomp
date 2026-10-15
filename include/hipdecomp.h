@@ -131,6 +131,7 @@ typedef enum {
   CUDECOMP_RESULT_MPI_ERROR = 6,
   CUDECOMP_RESULT_NCCL_ERROR = 7,
   CUDECOMP_RESULT_NVSHMEM_ERROR = 8,
+  CUDECOMP_RESULT_NVML_ERROR = 9
 } cudecompResult_t;
 #else
 typedef enum {
