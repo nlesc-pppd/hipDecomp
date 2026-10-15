@@ -53,7 +53,7 @@ program main
   real(8), allocatable :: kx(:), ky(:), kz(:)
   real(8), pointer :: kx_d(:), ky_d(:), kz_d(:)
 
-  complex(8), allocatable :: phi(:), ua(:,:,:)
+  complex(8), allocatable, target :: phi(:), ua(:,:,:)
   complex(8), pointer :: phi_d(:)
   complex(8), pointer, contiguous :: work_d(:)
 
@@ -286,7 +286,7 @@ program main
   end block
 
   ! H2D transfer
-  phi_d = phi
+  call hipCheck(hipMemcpy(phi_d, phi, size(phi), hipMemcpyHostToDevice))
 
   ! phi(x,y,z) -> phi(kx,y,z)
   status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_FORWARD)
@@ -345,20 +345,21 @@ program main
   end block
 
   ! phi(kz,kx,ky) -> phi(z,kx,ky)
-  status = hipfftExecZ2Z(planZ, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planZ, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Z inverse error: ', status
   ! phi(z,kx,ky) -> phi(ky,z,kx)
   CHECK_HIPDECOMP_EXIT(hipdecompTransposeZToY(handle, grid_desc, phi_d, phi_d, work_d, HIPDECOMP_DOUBLE_COMPLEX))
   ! phi(ky,z,kx) -> phi(y,z,kx)
-  status = hipfftExecZ2Z(planY, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planY, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Y inverse error: ', status
   ! phi(y,z,kx) -> phi(kx,y,z)
   CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToX(handle, grid_desc, phi_d, phi_d, work_d, HIPDECOMP_DOUBLE_COMPLEX))
   ! phi(kx,y,z) -> phi(x,y,z)
-  status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'X inverse error: ', status
 
-  phi = phi_d
+  ! D2H transfer
+  call hipCheck(hipMemcpy(phi, phi_d, size(phi), hipMemcpyDeviceToHost))
 
   ! check results
 
