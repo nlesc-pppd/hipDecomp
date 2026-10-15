@@ -13,6 +13,34 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_TRANSPOSE_COMM_MPI_P2P CUDECOMP_TRANSPOSE_COMM_MPI_P2P
+#define HIPDECOMP_DOUBLE_COMPLEX CUDECOMP_DOUBLE_COMPLEX
+
+#define hipdecompHandle cudecompHandle
+#define hipdecompGridDescConfig cudecompGridDescConfig
+#define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
+#define hipdecompGridDesc cudecompGridDesc
+#define hipdecompPencilInfo cudecompPencilInfo
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+#define hipdecompTransposeCommBackendToString cudecompTransposeCommBackendToString
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 #define CHECK_HIPDECOMP_EXIT(f) if (f /= HIPDECOMP_RESULT_SUCCESS) call exit(1)
 
 ! Solves poisson equation
@@ -26,9 +54,10 @@
 ! on domain 0 <= x <= 1, 0 <= y <= 1
 
 program main
-  use hipfor
+  use hipfort
+  use hipfort_check
+  use hipfort_hipfft
   use hipdecomp
-  use hipfft
   use mpi
 
   implicit none
@@ -50,11 +79,10 @@ program main
   real(8) :: hx, hy, hz
   ! wavenumbers
   real(8), allocatable :: kx(:), ky(:), kz(:)
-  real(8), device, allocatable :: kx_d(:), ky_d(:), kz_d(:)
 
-  complex(8), allocatable :: phi(:), ua(:,:,:)
-  complex(8), device, allocatable :: phi_d(:)
-  complex(8), pointer, device, contiguous :: work_d(:)
+  complex(8), allocatable, target :: phi(:), ua(:,:,:)
+  complex(8), pointer :: phi_d(:)
+  complex(8), pointer, contiguous :: work_d(:)
 
   ! MPI
   integer :: rank, ranks, ierr
@@ -71,9 +99,11 @@ program main
   integer :: npx, npy, npz
   type(hipdecompPencilInfo) :: piX, piY, piZ
   integer(8) :: nElemX, nElemY, nElemZ, nElemWork
+  integer :: device_count
+  logical :: disable_nccl_backends
 
   ! HIPFFT
-  integer :: planX, planY, planZ
+  type(c_ptr) :: planX, planY, planZ
   integer :: batchsize
   integer :: status
 
@@ -94,7 +124,14 @@ program main
   if (ierr /= MPI_SUCCESS) write(*,*) 'mpi_comm_split_type failed: ', ierr
   call mpi_comm_rank(localComm, localRank, ierr)
   if (ierr /= MPI_SUCCESS) write(*,*) 'mpi_comm_rank on local rank failed: ', ierr
-  ierr = hipSetDevice(localRank)
+
+  call hipCheck(hipGetDeviceCount(device_count))
+  call hipCheck(hipSetDevice(mod(localRank, device_count)))
+
+  ! Cannot use NCCL if multiple ranks run on the same GPU
+  disable_nccl_backends = .false.
+  if (localRank >= device_count) disable_nccl_backends = .true.
+  call MPI_Allreduce(MPI_IN_PLACE, disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD, ierr)
 
   ! Parse command-line arguments
   nx = 64
@@ -167,6 +204,7 @@ program main
 
   CHECK_HIPDECOMP_EXIT(hipdecompGridDescAutotuneOptionsSetDefaults(options))
   options%dtype = HIPDECOMP_DOUBLE_COMPLEX
+  options%disable_nccl_backends = disable_nccl_backends
   if (comm_backend == 0) then
     options%autotune_transpose_backend = .true.
   endif
@@ -233,7 +271,6 @@ program main
   do i = nx/2+1, nx
      kx(i) = (i-1-nx)*(twoPi/Lx)
   enddo
-  allocate(kx_d, source=kx)
 
   do j = 1, ny/2
      ky(j) = (j-1)*(twoPi/Ly)
@@ -241,7 +278,6 @@ program main
   do j = ny/2+1, ny
      ky(j) = (j-1-ny)*(twoPi/Ly)
   enddo
-  allocate(ky_d, source=ky)
 
   do k = 1, nz/2
      kz(k) = (k-1)*(twoPi/Lz)
@@ -249,12 +285,12 @@ program main
   do k = nz/2+1, nz
      kz(k) = (k-1-nz)*(twoPi/Lz)
   enddo
-  allocate(kz_d, source=kz)
 
   ! allocate arrays
 
   allocate(phi(max(nElemX, nElemY, nElemZ)))
-  allocate(phi_d, mold=phi)
+  call hipCheck(hipMalloc(phi_d, mold=phi))
+  
   allocate(ua(nx, piX%shape(2), piX%shape(3)))
   CHECK_HIPDECOMP_EXIT(hipdecompMalloc(handle, grid_desc, work_d, nElemWork))
 
@@ -280,7 +316,7 @@ program main
   end block
 
   ! H2D transfer
-  phi_d = phi
+  call hipCheck(hipMemcpy(phi_d, phi, size(phi), hipMemcpyHostToDevice))
 
   ! phi(x,y,z) -> phi(kx,y,z)
   status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_FORWARD)
@@ -297,7 +333,7 @@ program main
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Z forward error: ', status
 
   block
-    complex(8), device, pointer :: phi3d(:,:,:)
+    complex(8), pointer :: phi3d(:,:,:)
     real(8) :: k2
     integer :: il, jl, ig, jg
     integer :: offsets(3), xoff, yoff
@@ -306,8 +342,7 @@ program main
     np(piZ%order(1)) = piZ%shape(1)
     np(piZ%order(2)) = piZ%shape(2)
     np(piZ%order(3)) = piZ%shape(3)
-    call c_f_pointer(c_devloc(phi_d), phi3d, piZ%shape)
-
+    call c_f_pointer(c_loc(phi), phi3d, piZ%shape)
 
     ! divide by -K**2, and normalize
 
@@ -321,13 +356,16 @@ program main
     yoff = offsets(2)
     npx = np(1)
     npy = np(2)
-    !$cuf kernel do (2)
+
+    ! Note: ideally this would run on the device, but we do it on the host for portability
+    call hipCheck(hipMemcpy(phi, phi_d, size(phi), hipMemcpyDeviceToHost))
+
     do jl = 1, npy
        do il = 1, npx
           jg = yoff + jl
           ig = xoff + il
           do k = 1, nz
-             k2 = kx_d(ig)**2 + ky_d(jg)**2 + kz_d(k)**2
+             k2 = kx(ig)**2 + ky(jg)**2 + kz(k)**2
              phi3d(k,il,jl) = -phi3d(k,il,jl)/k2/norm
           enddo
        enddo
@@ -336,23 +374,26 @@ program main
     ! specify mean (corrects division by zero wavenumber above)
     if (xoff == 0 .and. yoff == 0) phi3d(1,1,1) = 0.0
 
+    call hipCheck(hipMemcpy(phi_d, phi, size(phi), hipMemcpyHostToDevice))
+
   end block
 
   ! phi(kz,kx,ky) -> phi(z,kx,ky)
-  status = hipfftExecZ2Z(planZ, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planZ, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Z inverse error: ', status
   ! phi(z,kx,ky) -> phi(ky,z,kx)
   CHECK_HIPDECOMP_EXIT(hipdecompTransposeZToY(handle, grid_desc, phi_d, phi_d, work_d, HIPDECOMP_DOUBLE_COMPLEX))
   ! phi(ky,z,kx) -> phi(y,z,kx)
-  status = hipfftExecZ2Z(planY, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planY, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'Y inverse error: ', status
   ! phi(y,z,kx) -> phi(kx,y,z)
   CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToX(handle, grid_desc, phi_d, phi_d, work_d, HIPDECOMP_DOUBLE_COMPLEX))
   ! phi(kx,y,z) -> phi(x,y,z)
-  status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_INVERSE)
+  status = hipfftExecZ2Z(planX, phi_d, phi_d, HIPFFT_BACKWARD)
   if (status /= HIPFFT_SUCCESS) write(*,*) 'X inverse error: ', status
 
-  phi = phi_d
+  ! D2H transfer
+  call hipCheck(hipMemcpy(phi, phi_d, size(phi), hipMemcpyDeviceToHost))
 
   ! check results
 
@@ -389,8 +430,9 @@ program main
 
   deallocate(x, y, z)
   deallocate(kx, ky, kz)
-  deallocate(kx_d, ky_d, kz_d)
-  deallocate(phi, phi_d, ua)
+  deallocate(phi, ua)
+
+  call hipCheck(hipFree(phi_d))
 
   CHECK_HIPDECOMP_EXIT(hipdecompFree(handle, grid_desc, work_d))
   CHECK_HIPDECOMP_EXIT(hipdecompGridDescDestroy(handle, grid_desc))

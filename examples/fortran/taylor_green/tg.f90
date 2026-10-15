@@ -13,12 +13,45 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_DOUBLE CUDECOMP_DOUBLE
+#define HIPDECOMP_DOUBLE_COMPLEX CUDECOMP_DOUBLE_COMPLEX
+#define HIPDECOMP_FLOAT CUDECOMP_FLOAT
+#define HIPDECOMP_FLOAT_COMPLEX CUDECOMP_FLOAT_COMPLEX
+
+#define hipdecompHandle cudecompHandle
+#define hipdecompGridDescConfig cudecompGridDescConfig
+#define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
+#define hipdecompGridDesc cudecompGridDesc
+#define hipdecompPencilInfo cudecompPencilInfo
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+! #define hipdecompTransposeCommBackendToString cudecompTransposeCommBackendToString
+! #define hipdecompHaloCommBackendToString cudecompHaloCommBackendToString
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+! #define hipdecompGetHaloWorkspaceSize cudecompGetHaloWorkspaceSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+! #define hipdecompUpdateHalosX cudecompUpdateHalosX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 #define CHECK_HIPDECOMP_EXIT(f) if (f /= HIPDECOMP_RESULT_SUCCESS) call exit(1)
 
 module precision
   use mpi, only: MPI_REAL,MPI_DOUBLE_PRECISION
   use hipdecomp, only: HIPDECOMP_DOUBLE, HIPDECOMP_DOUBLE_COMPLEX, HIPDECOMP_FLOAT, HIPDECOMP_FLOAT_COMPLEX
-  use hipfft, only: HIPFFT_D2Z, HIPFFT_Z2D, HIPFFT_Z2Z, HIPFFT_R2C, HIPFFT_C2R, HIPFFT_C2C
+  use hipfort_hipfft, only: HIPFFT_D2Z, HIPFFT_Z2D, HIPFFT_Z2Z, HIPFFT_R2C, HIPFFT_C2R, HIPFFT_C2C
   use iso_fortran_env, only: int64,real32,real64
   implicit none
   integer, parameter, public :: i8 = int64
@@ -46,9 +79,12 @@ end module precision
 
 program taylor_green
   use precision
+  use iso_c_binding
   use mpi
   use hipdecomp
-  use hipfft
+  use hipfort
+  use hipfort_check
+  use hipfort_hipfft
   implicit none
 
   integer :: commType = 0
@@ -69,11 +105,11 @@ program taylor_green
   integer :: i, j, k, status
   integer :: il, ig, kl, jl, kg, jg
   logical :: printPencilInfo = .false.
-  complex(rp), pointer, device, contiguous :: workC(:)
+  complex(rp), pointer, contiguous :: workC(:)
 
-  integer :: planD2ZX, planZ2DX, planZ2ZY, planZ2ZZ
+  type(c_ptr) :: planD2ZX, planZ2DX, planZ2ZY, planZ2ZZ
   integer :: batchSize
-  integer(i8) :: sizeD2ZX, sizeZ2DX, sizeZ2ZY, sizeZ2ZZ
+  integer(c_size_t) :: sizeD2ZX, sizeZ2DX, sizeZ2ZY, sizeZ2ZZ
   integer(i8) :: nElemWorkHIPFFT, nElemWorkDecomp
 
   logical :: skip_next
@@ -81,39 +117,39 @@ program taylor_green
 
   integer :: N=256
   integer :: kmax,niter=1000,stat_freq=100
-  real(rp) :: nu=0.000625
-  real(rp) :: dt=0.001
+  real(rp) :: nu=0.000625_rp
+  real(rp) :: dt=0.001_rp
   real(rp) :: maxtime=0.0
   real(rp) :: cfl=0.0
   real(rp) :: spec_freq=0.0
   real(rp) :: dx,dy,dz
   real(rp) :: ke,enst
-  real(rp), allocatable, managed :: kx(:),ky(:),kz(:)
+  real(rp), pointer, contiguous :: kx(:),ky(:),kz(:)
 
   real(rp) :: N3
   real(rp) :: sumsql,sumsq,velmaxl,velmax
   real(rp) :: u,v,w
   real(rp) :: kmaxr
   integer :: num_shells, spec_count
-  real(rp), allocatable, managed :: ek(:)
+  real(rp), pointer, contiguous :: ek(:) => null()
 
   real(8) :: ts,te,ts_step,te_step
   real(rp) :: flowtime=0._rp
   integer :: count=0
 
-  real(rp), allocatable, target, managed :: workspace(:)
-  real(rp), allocatable, target, managed :: dworkspace(:)
-  real(rp), allocatable, target, managed :: hworkspace(:,:)
-  real(rp), pointer, managed :: Ur(:,:,:),Vr(:,:,:),Wr(:,:,:)
-  complex(rp), pointer, managed :: Uc(:,:,:),Vc(:,:,:),Wc(:,:,:)
-  real(rp), pointer, managed :: dUr(:,:,:),dVr(:,:,:),dWr(:,:,:)
-  complex(rp), pointer, managed :: dUc(:,:,:),dVc(:,:,:),dWc(:,:,:)
-  real(rp), pointer, managed :: Uh1r(:,:,:),Vh1r(:,:,:),Wh1r(:,:,:)
-  real(rp), pointer, managed :: Uh2r(:,:,:),Vh2r(:,:,:),Wh2r(:,:,:)
-  real(rp), pointer, managed :: Uh3r(:,:,:),Vh3r(:,:,:),Wh3r(:,:,:)
-  complex(rp), pointer, managed :: Uh1c(:,:,:),Vh1c(:,:,:),Wh1c(:,:,:)
-  complex(rp), pointer, managed :: Uh2c(:,:,:),Vh2c(:,:,:),Wh2c(:,:,:)
-  complex(rp), pointer, managed :: Uh3c(:,:,:),Vh3c(:,:,:),Wh3c(:,:,:)
+  real(rp), pointer, contiguous :: workspace(:)
+  real(rp), pointer, contiguous :: dworkspace(:)
+  real(rp), pointer, contiguous :: hworkspace(:,:)
+  real(rp), pointer :: Ur(:,:,:),Vr(:,:,:),Wr(:,:,:)
+  complex(rp), pointer :: Uc(:,:,:),Vc(:,:,:),Wc(:,:,:)
+  real(rp), pointer :: dUr(:,:,:),dVr(:,:,:),dWr(:,:,:)
+  complex(rp), pointer :: dUc(:,:,:),dVc(:,:,:),dWc(:,:,:)
+  real(rp), pointer :: Uh1r(:,:,:),Vh1r(:,:,:),Wh1r(:,:,:)
+  real(rp), pointer :: Uh2r(:,:,:),Vh2r(:,:,:),Wh2r(:,:,:)
+  real(rp), pointer :: Uh3r(:,:,:),Vh3r(:,:,:),Wh3r(:,:,:)
+  complex(rp), pointer :: Uh1c(:,:,:),Vh1c(:,:,:),Wh1c(:,:,:)
+  complex(rp), pointer :: Uh2c(:,:,:),Vh2c(:,:,:),Wh2c(:,:,:)
+  complex(rp), pointer :: Uh3c(:,:,:),Vh3c(:,:,:),Wh3c(:,:,:)
 
   call initialize
   if( maxtime > 0.0_rp ) niter = 1000000
@@ -167,7 +203,7 @@ program taylor_green
 contains
 
 subroutine initializeField(Ur,Vr,Wr,dx,dy,dz,piXR)
-  real(rp), managed :: Ur(:,:,:),Vr(:,:,:),Wr(:,:,:)
+  real(rp) :: Ur(:,:,:),Vr(:,:,:),Wr(:,:,:)
   type(hipdecompPencilInfo) :: piXR
   integer :: il,ig,jl,jg,kl,kg
   real(rp) :: dx,dy,dz
@@ -186,14 +222,13 @@ subroutine initializeField(Ur,Vr,Wr,dx,dy,dz,piXR)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
 
 subroutine curl(U,V,W,dU,dV,dW)
-  complex(rp), managed :: U(:,:,:),V(:,:,:),W(:,:,:)
-  complex(rp), managed :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
+  complex(rp) :: U(:,:,:),V(:,:,:),W(:,:,:)
+  complex(rp) :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
   integer :: il,ig,jl,jg,kl,kg
 
 !$acc parallel loop collapse(3)
@@ -210,14 +245,13 @@ subroutine curl(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
 
 subroutine cross(U,V,W,dU,dV,dW)
-  real(rp), managed :: U(:,:,:),V(:,:,:),W(:,:,:)
-  real(rp), managed :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
+  real(rp) :: U(:,:,:),V(:,:,:),W(:,:,:)
+  real(rp) :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
   real(rp) :: Uu,Uv,Uw,dUu,dUv,dUw
   integer :: il,ig,jl,jg,kl,kg
 
@@ -237,14 +271,13 @@ subroutine cross(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
 
 subroutine compute_dU(U,V,W,dU,dV,dW)
-  complex(rp), managed :: U(:,:,:),V(:,:,:),W(:,:,:)
-  complex(rp), managed :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
+  complex(rp) :: U(:,:,:),V(:,:,:),W(:,:,:)
+  complex(rp) :: dU(:,:,:),dV(:,:,:),dW(:,:,:)
   real(rp) :: k2
   complex(rp) :: dUu,dUv,dUw,Ph
   logical :: alias
@@ -279,38 +312,37 @@ subroutine compute_dU(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
 
 subroutine forward(work)
-  real(rp), managed :: work(:)
+  real(rp), target, contiguous :: work(:)
   integer :: i
   integer(i8) :: start
 
   do i=1,3
     start=1+(i-1)*workSize
-    status = hipfftExecD2Z(planD2ZX, work(start), work(start))
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeXtoY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
-    status = hipfftExecZ2Z(planZ2ZY, work(start), work(start), HIPFFT_FORWARD)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYtoZ(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
-    status = hipfftExecZ2Z(planZ2ZZ, work(start), work(start), HIPFFT_FORWARD)
+    status = hipfftExecD2Z(planD2ZX, c_loc(work(start)), c_loc(work(start)))
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeXToY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    status = hipfftExecZ2Z(planZ2ZY, c_loc(work(start)), c_loc(work(start)), HIPFFT_FORWARD)
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToZ(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    status = hipfftExecZ2Z(planZ2ZZ, c_loc(work(start)), c_loc(work(start)), HIPFFT_FORWARD)
   end do
 end subroutine
 
 subroutine backward(work)
-  real(rp), managed :: work(:)
+  real(rp), target, contiguous :: work(:)
   integer :: i
   integer(i8) :: start
 
   do i=1,3
     start=1+(i-1)*workSize
-    status = hipfftExecZ2Z(planZ2ZZ, work(start), work(start), HIPFFT_INVERSE)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeZtoY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
-    status = hipfftExecZ2Z(planZ2ZY, work(start), work(start), HIPFFT_INVERSE)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYtoX(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
-    status = hipfftExecZ2D(planZ2DX, work(start), work(start))
+    status = hipfftExecZ2Z(planZ2ZZ, c_loc(work(start)), c_loc(work(start)), HIPFFT_BACKWARD)
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeZToY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    status = hipfftExecZ2Z(planZ2ZY, c_loc(work(start)), c_loc(work(start)), HIPFFT_BACKWARD)
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToX(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    status = hipfftExecZ2D(planZ2DX, c_loc(work(start)), c_loc(work(start)))
   end do
 end subroutine
 
@@ -330,7 +362,6 @@ subroutine print_stats
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -350,7 +381,6 @@ subroutine print_stats
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -399,7 +429,6 @@ subroutine write_spectrum_sample(idx)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -543,7 +572,6 @@ subroutine get_dt
         end do
       end do
     end do
-!$acc end parallel
 
     status=hipDeviceSynchronize()
 
@@ -575,8 +603,8 @@ subroutine initialize
 
   call mpi_comm_rank(localComm, localRank, ierr)
   if (ierr /= MPI_SUCCESS) write(*,*) 'mpi_comm_rank on local rank failed: ', ierr
-  ierr = hipGetDeviceCount(numDev)
-  ierr = hipSetDevice(mod(localRank,numDev))
+  call hipCheck(hipGetDeviceCount(numDev))
+  call hipCheck(hipSetDevice(mod(localRank,numDev)))
 
   skip_next = .false.
   do i = 1, command_argument_count()
@@ -725,15 +753,15 @@ subroutine initialize
   nElemWorkC = max(nElemWorkHipfft,nElemWorkDecomp)
   CHECK_HIPDECOMP_EXIT(hipdecompMalloc(handle, gridDescC, workC, nElemWorkC))
 
-  status = hipfftSetWorkArea(planD2ZX, workC)
-  status = hipfftSetWorkArea(planZ2DX, workC)
-  status = hipfftSetWorkArea(planZ2ZY, workC)
-  status = hipfftSetWorkArea(planZ2ZZ, workC)
+  status = hipfftSetWorkArea(planD2ZX, c_loc(workC))
+  status = hipfftSetWorkArea(planZ2DX, c_loc(workC))
+  status = hipfftSetWorkArea(planZ2ZY, c_loc(workC))
+  status = hipfftSetWorkArea(planZ2ZZ, c_loc(workC))
 
   workSize=max(2*nElemXC, 2*nElemYC, 2*nElemZC, nElemXR)
-  allocate(workspace(3*workSize))
-  allocate(dworkspace(3*workSize))
-  allocate(hworkspace(3*worksize,3))
+  call hipCheck(hipMallocManaged(workspace, int(3*workSize, c_size_t), hipMemAttachGlobal))
+  call hipCheck(hipMallocManaged(dworkspace, int(3*workSize, c_size_t), hipMemAttachGlobal))
+  call hipCheck(hipMallocManaged(hworkspace, int(3*workSize, c_size_t), 3_c_size_t, hipMemAttachGlobal))
 
   call c_f_pointer(c_loc(workspace              ),Ur    ,[piXR%shape(1),piXR%shape(2),piXR%shape(3)])
   call c_f_pointer(c_loc(workspace              ),Uc    ,[piZC%shape(1),piZC%shape(2),piZC%shape(3)])
@@ -771,7 +799,9 @@ subroutine initialize
   call c_f_pointer(c_loc(hworkspace(1+2*workSize,3)),Wh3c    ,[piZC%shape(1),piZC%shape(2),piZC%shape(3)])
 
   kmax=N/2
-  allocate(kx(N/2+1),ky(N),kz(N))
+  call hipCheck(hipMallocManaged(kx, int(N/2+1, c_size_t), hipMemAttachGlobal))
+  call hipCheck(hipMallocManaged(ky, int(N, c_size_t), hipMemAttachGlobal))
+  call hipCheck(hipMallocManaged(kz, int(N, c_size_t), hipMemAttachGlobal))
 
   kx = real((/ (i-1,i=1,kmax), -kmax /), rp)
   ky = real((/ (i-1,i=1,kmax),(i-1-N,i=kmax+1,N) /), rp)
@@ -801,16 +831,19 @@ subroutine initialize
 
   if(spec_freq > 0._rp) then
     num_shells = int(sqrt(9.0_rp*N*N + 4.0_rp*N + 4.0_rp) / 4.0_rp) + 1
-    allocate(ek(num_shells))
+    call hipCheck(hipMallocManaged(ek, int(num_shells, c_size_t), hipMemAttachGlobal))
     spec_count = 0
   end if
 end subroutine
 
 subroutine finalize
-  deallocate(kx,ky,kz)
-  deallocate(workspace)
-  deallocate(dworkspace)
-  deallocate(hworkspace)
+  call hipCheck(hipFree(kx))
+  call hipCheck(hipFree(ky))
+  call hipCheck(hipFree(kz))
+  call hipCheck(hipFree(workspace))
+  call hipCheck(hipFree(dworkspace))
+  call hipCheck(hipFree(hworkspace))
+  if (associated(ek)) call hipCheck(hipFree(ek))
 
   status = hipfftDestroy(planD2ZX)
   status = hipfftDestroy(planZ2DX)

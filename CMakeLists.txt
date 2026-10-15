@@ -25,7 +25,7 @@ if(DEFINED ENV{CRAYPE_DIR})
   set(DEFAULT_HIP_COMPILER "$ENV{CRAYPE_DIR}/bin/CC")
   set(DEFAULT_Fortran_COMPILER "$ENV{CRAYPE_DIR}/bin/ftn")
   # Flags
-  set(FORTRAN_COMPILE_OPTIONS -eZ -ef -M969)
+  set(FORTRAN_COMPILE_OPTIONS -eZ -ef -M969 -M878)
 else()
   # Use AMD LLVM compilers by default
   # Compilers
@@ -215,7 +215,7 @@ if (HIPDECOMP_BUILD_FORTRAN)
 endif()
 
 if (HIPDECOMP_BUILD_EXTRAS)
-  # add_subdirectory(benchmark)
+  add_subdirectory(benchmark)
 
   add_subdirectory(tests/cc)
   add_subdirectory(examples/cc/basic_usage)
@@ -225,7 +225,7 @@ if (HIPDECOMP_BUILD_EXTRAS)
      find_package(hipfort REQUIRED COMPONENTS hip)
      add_subdirectory(tests/fortran)
      add_subdirectory(examples/fortran/basic_usage)
-     # add_subdirectory(examples/fortran/poisson)
-     # add_subdirectory(examples/fortran/taylor_green)
+     add_subdirectory(examples/fortran/poisson)
+     add_subdirectory(examples/fortran/taylor_green)
    endif()
 endif()

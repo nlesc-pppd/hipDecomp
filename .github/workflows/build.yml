@@ -8,8 +8,8 @@ on:
     branches: [ main ]
 
 env:
-  rocm-version: "7.2.0"
-  openmpi-version: "5.0.10"
+  rocm-version: "7.2.4"
+  openmpi-version: "5.0.11"
 
 jobs:
   test-build:
@@ -45,7 +45,16 @@ jobs:
         uses: loostrum/rocm-installer@v0.2
         with:
           version: ${{ env.rocm-version }}
-          packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev hipfort-dev rccl-dev rocprofiler-sdk-roctx
+          packages: rocm-hip-runtime-dev hipcub-dev hipfft-dev rccl-dev rocprofiler-sdk-roctx
+
+      - name: Install hipfort
+        if: steps.cache-rocm.outputs.cache-hit != 'true'
+        run: |
+          git clone https://github.com/ROCm/hipfort -b rocm-${{ env.rocm-version }}
+          cd hipfort
+          cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DCMAKE_INSTALL_PREFIX=/opt/rocm-${{ env.rocm-version }}
+          make -C build -j
+          sudo make -C build install
 
       - name: Install OpenMPI
         if: steps.cache-openmpi.outputs.cache-hit != 'true'

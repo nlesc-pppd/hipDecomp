@@ -1,4 +1,4 @@
-find_package(hipfft REQUIRED)
+find_package(hipfort REQUIRED COMPONENTS hipfft)
 
 set(benchmark_targets
   benchmark_r2c
@@ -9,11 +9,11 @@ set(benchmark_targets
 
 foreach(tgt ${benchmark_targets})
   add_executable(${tgt})
-  set_target_properties(${tgt} PROPERTIES CUDA_ARCHITECTURES "${HIPDECOMP_HIP_ARCH_LIST}")
   target_sources(${tgt}
     PRIVATE
-    benchmark.cu
+    benchmark.cc
   )
+  set_source_files_properties(benchmark.cc PROPERTIES LANGUAGE HIP)
   target_include_directories(${tgt}
 	                     PRIVATE
 			     ${CMAKE_CURRENT_SOURCE_DIR}/../include
@@ -21,6 +21,9 @@ foreach(tgt ${benchmark_targets})
   target_link_libraries(${tgt} PRIVATE hipdecomp)
   target_link_libraries(${tgt} PRIVATE hip::hipfft)
   set_target_properties(${tgt} PROPERTIES LINKER_LANGUAGE CXX)
+  if(HIPDECOMP_USE_CUDECOMP_NAMES)
+    target_compile_definitions(${tgt} PRIVATE USE_CUDECOMP_NAMES)
+  endif()
 endforeach()
 
 target_compile_definitions(benchmark_r2c PRIVATE R2C)
