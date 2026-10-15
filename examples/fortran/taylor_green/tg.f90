@@ -189,7 +189,6 @@ subroutine initializeField(Ur,Vr,Wr,dx,dy,dz,piXR)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
@@ -213,7 +212,6 @@ subroutine curl(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
@@ -240,7 +238,6 @@ subroutine cross(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
@@ -282,7 +279,6 @@ subroutine compute_dU(U,V,W,dU,dV,dW)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 end subroutine
@@ -294,7 +290,6 @@ subroutine forward(work)
 
   do i=1,3
     start=1+(i-1)*workSize
-    ptr = c_loc(work(start))
     status = hipfftExecD2Z(planD2ZX, c_loc(work(start)), c_loc(work(start)))
     CHECK_HIPDECOMP_EXIT(hipdecompTransposeXtoY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
     status = hipfftExecZ2Z(planZ2ZY, c_loc(work(start)), c_loc(work(start)), HIPFFT_FORWARD)
@@ -334,7 +329,6 @@ subroutine print_stats
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -354,7 +348,6 @@ subroutine print_stats
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -403,7 +396,6 @@ subroutine write_spectrum_sample(idx)
       end do
     end do
   end do
-!$acc end parallel
 
   status=hipDeviceSynchronize()
 
@@ -547,7 +539,6 @@ subroutine get_dt
         end do
       end do
     end do
-!$acc end parallel
 
     status=hipDeviceSynchronize()
 
