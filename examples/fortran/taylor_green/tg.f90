@@ -13,6 +13,39 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_DOUBLE CUDECOMP_DOUBLE
+#define HIPDECOMP_DOUBLE_COMPLEX CUDECOMP_DOUBLE_COMPLEX
+#define HIPDECOMP_FLOAT CUDECOMP_FLOAT
+#define HIPDECOMP_FLOAT_COMPLEX CUDECOMP_FLOAT_COMPLEX
+
+#define hipdecompHandle cudecompHandle
+#define hipdecompGridDescConfig cudecompGridDescConfig
+#define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
+#define hipdecompGridDesc cudecompGridDesc
+#define hipdecompPencilInfo cudecompPencilInfo
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+! #define hipdecompTransposeCommBackendToString cudecompTransposeCommBackendToString
+! #define hipdecompHaloCommBackendToString cudecompHaloCommBackendToString
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+! #define hipdecompGetHaloWorkspaceSize cudecompGetHaloWorkspaceSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+! #define hipdecompUpdateHalosX cudecompUpdateHalosX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 #define CHECK_HIPDECOMP_EXIT(f) if (f /= HIPDECOMP_RESULT_SUCCESS) call exit(1)
 
 module precision
@@ -291,9 +324,9 @@ subroutine forward(work)
   do i=1,3
     start=1+(i-1)*workSize
     status = hipfftExecD2Z(planD2ZX, c_loc(work(start)), c_loc(work(start)))
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeXtoY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeXToY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
     status = hipfftExecZ2Z(planZ2ZY, c_loc(work(start)), c_loc(work(start)), HIPFFT_FORWARD)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYtoZ(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToZ(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
     status = hipfftExecZ2Z(planZ2ZZ, c_loc(work(start)), c_loc(work(start)), HIPFFT_FORWARD)
   end do
 end subroutine
@@ -306,9 +339,9 @@ subroutine backward(work)
   do i=1,3
     start=1+(i-1)*workSize
     status = hipfftExecZ2Z(planZ2ZZ, c_loc(work(start)), c_loc(work(start)), HIPFFT_BACKWARD)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeZtoY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeZToY(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
     status = hipfftExecZ2Z(planZ2ZY, c_loc(work(start)), c_loc(work(start)), HIPFFT_BACKWARD)
-    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYtoX(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
+    CHECK_HIPDECOMP_EXIT(hipdecompTransposeYToX(handle, gridDescC, work(start), work(start), workC, HIPDECOMP_REAL_COMPLEX_RP))
     status = hipfftExecZ2D(planZ2DX, c_loc(work(start)), c_loc(work(start)))
   end do
 end subroutine

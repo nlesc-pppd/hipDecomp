@@ -13,6 +13,34 @@
 ! See the License for the specific language governing permissions and
 ! limitations under the License.
 
+#ifdef USE_CUDECOMP_NAMES
+#define HIPDECOMP_RESULT_SUCCESS CUDECOMP_RESULT_SUCCESS
+#define HIPDECOMP_TRANSPOSE_COMM_MPI_P2P CUDECOMP_TRANSPOSE_COMM_MPI_P2P
+#define HIPDECOMP_DOUBLE_COMPLEX CUDECOMP_DOUBLE_COMPLEX
+
+#define hipdecompHandle cudecompHandle
+#define hipdecompGridDescConfig cudecompGridDescConfig
+#define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
+#define hipdecompGridDesc cudecompGridDesc
+#define hipdecompPencilInfo cudecompPencilInfo
+
+#define hipdecompInit cudecompInit
+#define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
+#define hipdecompGridDescAutotuneOptionsSetDefaults cudecompGridDescAutotuneOptionsSetDefaults
+#define hipdecompGridDescCreate cudecompGridDescCreate
+#define hipdecompTransposeCommBackendToString cudecompTransposeCommBackendToString
+#define hipdecompGetPencilInfo cudecompGetPencilInfo
+#define hipdecompGetTransposeWorkspaceSize cudecompGetTransposeWorkspaceSize
+#define hipdecompMalloc cudecompMalloc
+#define hipdecompTransposeXToY cudecompTransposeXToY
+#define hipdecompTransposeYToZ cudecompTransposeYToZ
+#define hipdecompTransposeZToY cudecompTransposeZToY
+#define hipdecompTransposeYToX cudecompTransposeYToX
+#define hipdecompFree cudecompFree
+#define hipdecompGridDescDestroy cudecompGridDescDestroy
+#define hipdecompFinalize cudecompFinalize
+#endif
+
 #define CHECK_HIPDECOMP_EXIT(f) if (f /= HIPDECOMP_RESULT_SUCCESS) call exit(1)
 
 ! Solves poisson equation

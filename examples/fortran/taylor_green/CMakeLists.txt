@@ -24,6 +24,9 @@ if(CRAY_ENV)
 else()
   message(WARNING "OpenACC is not enabled, Fortran tg_fortran example will not give correct results")
 endif()
+if(HIPDECOMP_USE_CUDECOMP_NAMES)
+  target_compile_definitions(tg_fortran PRIVATE USE_CUDECOMP_NAMES)
+endif()
 
 install(
   TARGETS tg_fortran

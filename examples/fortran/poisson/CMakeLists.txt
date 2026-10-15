@@ -17,6 +17,9 @@ target_link_libraries(poisson PRIVATE hipfort::hipfft)
 target_link_libraries(poisson PRIVATE hipdecomp)
 target_link_libraries(poisson PRIVATE hipdecomp_fort)
 target_compile_options(poisson PRIVATE $<$<COMPILE_LANGUAGE:Fortran>:${FORTRAN_COMPILE_OPTIONS}>)
+if(HIPDECOMP_USE_CUDECOMP_NAMES)
+  target_compile_definitions(poisson PRIVATE USE_CUDECOMP_NAMES)
+endif()
 
 install(
   TARGETS poisson
