@@ -72,6 +72,8 @@ program main
   integer :: npx, npy, npz
   type(hipdecompPencilInfo) :: piX, piY, piZ
   integer(8) :: nElemX, nElemY, nElemZ, nElemWork
+  integer :: device_count
+  logical :: disable_nccl_backends
 
   ! HIPFFT
   type(c_ptr) :: planX, planY, planZ
@@ -95,7 +97,14 @@ program main
   if (ierr /= MPI_SUCCESS) write(*,*) 'mpi_comm_split_type failed: ', ierr
   call mpi_comm_rank(localComm, localRank, ierr)
   if (ierr /= MPI_SUCCESS) write(*,*) 'mpi_comm_rank on local rank failed: ', ierr
-  ierr = hipSetDevice(localRank)
+
+  call hipCheck(hipGetDeviceCount(device_count))
+  call hipCheck(hipSetDevice(mod(localRank, device_count)))
+
+  ! Cannot use NCCL if multiple ranks run on the same GPU
+  disable_nccl_backends = .false.
+  if (localRank >= device_count) disable_nccl_backends = .true.
+  call MPI_Allreduce(MPI_IN_PLACE, disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD, ierr)
 
   ! Parse command-line arguments
   nx = 64
@@ -168,6 +177,7 @@ program main
 
   CHECK_HIPDECOMP_EXIT(hipdecompGridDescAutotuneOptionsSetDefaults(options))
   options%dtype = HIPDECOMP_DOUBLE_COMPLEX
+  options%disable_nccl_backends = disable_nccl_backends
   if (comm_backend == 0) then
     options%autotune_transpose_backend = .true.
   endif
