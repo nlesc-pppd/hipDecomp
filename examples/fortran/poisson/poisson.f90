@@ -51,7 +51,6 @@ program main
   real(8) :: hx, hy, hz
   ! wavenumbers
   real(8), allocatable :: kx(:), ky(:), kz(:)
-  real(8), pointer :: kx_d(:), ky_d(:), kz_d(:)
 
   complex(8), allocatable, target :: phi(:), ua(:,:,:)
   complex(8), pointer :: phi_d(:)
@@ -244,8 +243,6 @@ program main
   do i = nx/2+1, nx
      kx(i) = (i-1-nx)*(twoPi/Lx)
   enddo
-  allocate(kx_d, source=kx)
-  call hipCheck(hipMalloc(kx_d, source=kx))
 
   do j = 1, ny/2
      ky(j) = (j-1)*(twoPi/Ly)
@@ -253,8 +250,6 @@ program main
   do j = ny/2+1, ny
      ky(j) = (j-1-ny)*(twoPi/Ly)
   enddo
-  allocate(ky_d, source=ky)
-  call hipCheck(hipMalloc(ky_d, source=ky))
 
   do k = 1, nz/2
      kz(k) = (k-1)*(twoPi/Lz)
@@ -262,13 +257,10 @@ program main
   do k = nz/2+1, nz
      kz(k) = (k-1-nz)*(twoPi/Lz)
   enddo
-  allocate(kz_d, source=kz)
-  call hipCheck(hipMalloc(kz_d, source=kz))
 
   ! allocate arrays
 
   allocate(phi(max(nElemX, nElemY, nElemZ)))
-  allocate(phi_d, mold=phi)
   call hipCheck(hipMalloc(phi_d, mold=phi))
   
   allocate(ua(nx, piX%shape(2), piX%shape(3)))
@@ -322,8 +314,7 @@ program main
     np(piZ%order(1)) = piZ%shape(1)
     np(piZ%order(2)) = piZ%shape(2)
     np(piZ%order(3)) = piZ%shape(3)
-    call c_f_pointer(c_loc(phi_d), phi3d, piZ%shape)
-
+    call c_f_pointer(c_loc(phi), phi3d, piZ%shape)
 
     ! divide by -K**2, and normalize
 
@@ -337,13 +328,16 @@ program main
     yoff = offsets(2)
     npx = np(1)
     npy = np(2)
-    !$cuf kernel do (2)
+
+    ! Note: ideally this would run on the device, but we do it on the host for portability
+    call hipCheck(hipMemcpy(phi, phi_d, size(phi), hipMemcpyDeviceToHost))
+
     do jl = 1, npy
        do il = 1, npx
           jg = yoff + jl
           ig = xoff + il
           do k = 1, nz
-             k2 = kx_d(ig)**2 + ky_d(jg)**2 + kz_d(k)**2
+             k2 = kx(ig)**2 + ky(jg)**2 + kz(k)**2
              phi3d(k,il,jl) = -phi3d(k,il,jl)/k2/norm
           enddo
        enddo
@@ -351,6 +345,8 @@ program main
 
     ! specify mean (corrects division by zero wavenumber above)
     if (xoff == 0 .and. yoff == 0) phi3d(1,1,1) = 0.0
+
+    call hipCheck(hipMemcpy(phi_d, phi, size(phi), hipMemcpyHostToDevice))
 
   end block
 
@@ -408,9 +404,6 @@ program main
   deallocate(kx, ky, kz)
   deallocate(phi, ua)
 
-  call hipCheck(hipFree(kx_d))
-  call hipCheck(hipFree(ky_d))
-  call hipCheck(hipFree(kz_d))
   call hipCheck(hipFree(phi_d))
 
   CHECK_HIPDECOMP_EXIT(hipdecompFree(handle, grid_desc, work_d))
