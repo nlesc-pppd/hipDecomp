@@ -1,4 +1,4 @@
-find_package(hipfft REQUIRED)
+find_package(hipfort REQUIRED COMPONENTS hipfft)
 
 set(benchmark_targets
   benchmark_r2c
