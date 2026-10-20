@@ -59,8 +59,8 @@ typedef enum {
   HIPDECOMP_TRANSPOSE_COMM_MPI_A2A = 3,    ///< MPI backend using MPI_Alltoallv
   HIPDECOMP_TRANSPOSE_COMM_NCCL = 4,       ///< NCCL backend
   HIPDECOMP_TRANSPOSE_COMM_NCCL_PL = 5,    ///< NCCL backend with pipelining
-  HIPDECOMP_TRANSPOSE_COMM_NVSHMEM = 6,    ///< NVSHMEM backend
-  HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL = 7  ///< NVSHMEM backend with pipelining
+  HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM = 6,   ///< rocSHMEM backend
+  HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL = 7 ///< rocSHMEM backend with pipelining
 } hipdecompTransposeCommBackend_t;
 #endif
 
@@ -77,11 +77,11 @@ typedef enum {
 } cudecompHaloCommBackend_t;
 #else
 typedef enum {
-  HIPDECOMP_HALO_COMM_MPI = 1,             ///< MPI backend
-  HIPDECOMP_HALO_COMM_MPI_BLOCKING = 2,    ///< MPI backend with blocking between each peer transfer
-  HIPDECOMP_HALO_COMM_NCCL = 3,            ///< NCCL backend
-  HIPDECOMP_HALO_COMM_NVSHMEM = 4,         ///< NVSHMEM backend
-  HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING = 5 ///< NVSHMEM backend with blocking between each peer transfer
+  HIPDECOMP_HALO_COMM_MPI = 1,              ///< MPI backend
+  HIPDECOMP_HALO_COMM_MPI_BLOCKING = 2,     ///< MPI backend with blocking between each peer transfer
+  HIPDECOMP_HALO_COMM_NCCL = 3,             ///< NCCL backend
+  HIPDECOMP_HALO_COMM_ROCSHMEM = 4,         ///< rocSHMEM backend
+  HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING = 5 ///< rocSHMEM backend with blocking between each peer transfer
 } hipdecompHaloCommBackend_t;
 #endif
 
@@ -144,8 +144,8 @@ typedef enum {
       5,                           ///< An error occured in the hipTENSOR library (keeping for cuDecomp compatibility)
   HIPDECOMP_RESULT_MPI_ERROR = 6,  ///< An error occurred in the MPI library
   HIPDECOMP_RESULT_NCCL_ERROR = 7, ///< An error occured in the NCCL library
-  HIPDECOMP_RESULT_NVSHMEM_ERROR = 8, ///< An error occured in the NVSHMEM library
-  HIPDECOMP_RESULT_NVML_ERROR = 9     ///< An error occurred in the NVML library (keeping for cuDecomp compatibility)
+  HIPDECOMP_RESULT_ROCSHMEM_ERROR = 8, ///< An error occured in the rocSHMEM library
+  HIPDECOMP_RESULT_NVML_ERROR = 9      ///< An error occurred in the NVML library (keeping for cuDecomp compatibility)
 } hipdecompResult_t;
 #endif
 
@@ -242,7 +242,7 @@ typedef struct {
   bool allow_uneven_decompositions; ///< flag to control whether autotuning allows process grids that result in uneven
                                     ///< distributions of elements across processes (default: true)
   bool disable_nccl_backends;       ///< flag to disable NCCL backend options during autotuning (default: false)
-  bool disable_nvshmem_backends;    ///< flag to disable NVSHMEM backend options during autotuning (default: false)
+  bool disable_rocshmem_backends;   ///< flag to disable rocSHMEM backend options during autotuning (default: false)
   double skip_threshold;            ///< threshold used to skip testing slow configurations; skip configuration
                          ///< if `skip_threshold * t > t_best`, where `t` is the duration of the first timed trial
                          ///< for the configuration and `t_best` is the average trial time of the current best
@@ -532,10 +532,10 @@ hipdecompResult_t hipdecompGetDataTypeSize(hipdecompDataType_t dtype, int64_t* d
  * @brief Allocation function for hipDecomp workspaces
  * @details This function should be used to allocate hipDecomp workspaces. It will select an appropriate allocator
  * based on the communication backend information found in the provided grid descriptor. At the current time, only
- * NVSHMEM-enabled backends require a special allocation (using nvshmem_malloc). This function is collective and should
- * be called on all workers to avoid deadlocks. Additionally, any memory allocated using this function is invalidated
- * if the provided grid descriptor is destroyed and care are should be taken free memory allocated using this function
- * before the provided grid descriptor is destroyed.
+ * rocSHMEM-enabled backends require a special allocation (using rocshmem_malloc). This function is collective and
+ * should be called on all workers to avoid deadlocks. Additionally, any memory allocated using this function is
+ * invalidated if the provided grid descriptor is destroyed and care are should be taken free memory allocated using
+ * this function before the provided grid descriptor is destroyed.
  * @param[in] handle The initialized hipDecomp library handle
  * @param[in] grid_desc A hipDecomp grid descriptor
  * @param[out] buffer A pointer to the allocated memory
@@ -555,7 +555,7 @@ hipdecompResult_t hipdecompMalloc(hipdecompHandle_t handle, hipdecompGridDesc_t 
  * @brief Deallocation function for hipDecomp workspaces
  * @details This function should be used to deallocate memory allocate with hipdecompMalloc. It will select an
  * appropriate deallocation function based on the communication backend information found in the provided grid
- * descriptor. At the current time, only NVSHMEM-enabled backends require a special deallocation (using nvshmem_free).
+ * descriptor. At the current time, only rocSHMEM-enabled backends require a special deallocation (using rocshmem_free).
  * This function is collective and should be called on all workers to avoid deadlocks.
  * @param[in] handle The initialized hipDecomp library handle
  * @param[in] grid_desc A hipDecomp grid descriptor

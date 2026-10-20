@@ -28,9 +28,9 @@
 #include <hip/hip_runtime.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
-#include <nvshmemx.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
+using namespace rocshmem;
 #endif
 
 #include "hipdecomp.h"
@@ -64,24 +64,19 @@ static hipdecomp::ncclComm ncclCommFromMPIComm(MPI_Comm mpi_comm) {
   return hipdecomp::createNcclComm(nccl_comm);
 }
 
-#ifdef ENABLE_NVSHMEM
-static void initNvshmemFromMPIComm(MPI_Comm mpi_comm) {
+#ifdef ENABLE_ROCSHMEM
+static void initRocshmemFromMPIComm(MPI_Comm mpi_comm) {
   int rank, nranks;
   CHECK_MPI(MPI_Comm_rank(mpi_comm, &rank));
   CHECK_MPI(MPI_Comm_size(mpi_comm, &nranks));
 
-  nvshmemx_init_attr_t attr;
-#if NVSHMEM_VENDOR_MAJOR_VERSION >= 3
-  nvshmemx_uniqueid_t id;
-  if (rank == 0) nvshmemx_get_uniqueid(&id);
+  rocshmem_init_attr_t attr;
+  rocshmem_uniqueid_t id;
+  if (rank == 0) rocshmem_get_uniqueid(&id);
   CHECK_MPI(MPI_Bcast(&id, sizeof(id), MPI_BYTE, 0, mpi_comm));
   CHECK_MPI(MPI_Barrier(mpi_comm));
-  nvshmemx_set_attr_uniqueid_args(rank, nranks, &id, &attr);
-  nvshmemx_init_attr(NVSHMEMX_INIT_WITH_UNIQUEID, &attr);
-#else
-  attr.mpi_comm = &mpi_comm;
-  nvshmemx_init_attr(NVSHMEMX_INIT_WITH_MPI_COMM, &attr);
-#endif
+  rocshmem_set_attr_uniqueid_args(rank, nranks, &id, &attr);
+  rocshmem_init_attr(ROCSHMEM_INIT_WITH_UNIQUEID, &attr);
 }
 #endif
 
@@ -99,13 +94,13 @@ static void checkTransposeCommBackend(hipdecompTransposeCommBackend_t comm_backe
   case HIPDECOMP_TRANSPOSE_COMM_MPI_P2P:
   case HIPDECOMP_TRANSPOSE_COMM_MPI_P2P_PL:
   case HIPDECOMP_TRANSPOSE_COMM_MPI_A2A:
-#ifdef ENABLE_NVSHMEM
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM:
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL: return;
+#ifdef ENABLE_ROCSHMEM
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM:
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL: return;
 #else
     return;
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM:
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL: THROW_NOT_SUPPORTED("transpose communication type unsupported");
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM:
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL: THROW_NOT_SUPPORTED("transpose communication type unsupported");
 #endif
 
   default: THROW_INVALID_USAGE("unknown transpose communication type");
@@ -117,13 +112,13 @@ static void checkHaloCommBackend(hipdecompHaloCommBackend_t comm_backend) {
   case HIPDECOMP_HALO_COMM_NCCL:
   case HIPDECOMP_HALO_COMM_MPI:
   case HIPDECOMP_HALO_COMM_MPI_BLOCKING:
-#ifdef ENABLE_NVSHMEM
-  case HIPDECOMP_HALO_COMM_NVSHMEM:
-  case HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING: return;
+#ifdef ENABLE_ROCSHMEM
+  case HIPDECOMP_HALO_COMM_ROCSHMEM:
+  case HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING: return;
 #else
     return;
-  case HIPDECOMP_HALO_COMM_NVSHMEM:
-  case HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING: THROW_NOT_SUPPORTED("halo communication type unsupported");
+  case HIPDECOMP_HALO_COMM_ROCSHMEM:
+  case HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING: THROW_NOT_SUPPORTED("halo communication type unsupported");
 #endif
   default: THROW_INVALID_USAGE("unknown halo communication type");
   }
@@ -264,38 +259,15 @@ static void getHipdecompEnvVars(hipdecompHandle_t& handle) {
   handle->use_col_major_rank_order = checkEnvVar("HIPDECOMP_USE_COL_MAJOR_RANK_ORDER");
 }
 
-#ifdef ENABLE_NVSHMEM
-static void inspectNvshmemEnvVars(hipdecompHandle_t& handle) {
-  // Check NVSHMEM_DISABLE_HIP_VMM
-  handle->nvshmem_vmm = true;
-  char* vmm_str = std::getenv("NVSHMEM_DISABLE_HIP_VMM");
-  if (vmm_str) { handle->nvshmem_vmm = std::strtol(vmm_str, nullptr, 10) == 0; }
-
-  if (handle->rank == 0 && handle->nvshmem_vmm) {
-    printf("HIPDECOMP:WARN: NVSHMEM_DISABLE_HIP_VMM is unset. We currently recommend setting it "
-           "(i.e. NVSHMEM_DISABLE_HIP_VMM=1) for best compatibility with MPI libraries. See the documentation "
-           "for more details.\n");
-  }
-
-  // Check NVSHMEM_SYMMETRIC_SIZE
-  char* symmetric_size_str = std::getenv("NVSHMEM_SYMMETRIC_SIZE");
-  if (symmetric_size_str) {
-    int scale;
-    if (std::strchr(symmetric_size_str, 'k') || std::strchr(symmetric_size_str, 'K')) {
-      scale = 10;
-    } else if (std::strchr(symmetric_size_str, 'm') || std::strchr(symmetric_size_str, 'M')) {
-      scale = 20;
-    } else if (std::strchr(symmetric_size_str, 'g') || std::strchr(symmetric_size_str, 'G')) {
-      scale = 30;
-    } else if (std::strchr(symmetric_size_str, 't') || std::strchr(symmetric_size_str, 'T')) {
-      scale = 40;
-    } else {
-      scale = 0;
-    }
-    handle->nvshmem_symmetric_size = std::ceil(std::strtod(symmetric_size_str, nullptr) * (1ull << scale));
+#ifdef ENABLE_ROCSHMEM
+static void inspectRocshmemEnvVars(hipdecompHandle_t& handle) {
+  // Check ROCSHMEM_HEAP_SIZE (rocSHMEM only accepts a plain number of bytes)
+  char* heap_size_str = std::getenv("ROCSHMEM_HEAP_SIZE");
+  if (heap_size_str) {
+    handle->rocshmem_heap_size = std::strtoull(heap_size_str, nullptr, 10);
   } else {
-    // NVSHMEM symmetric size defaults to 1 GiB
-    handle->nvshmem_symmetric_size = 1ull << 30;
+    // rocSHMEM heap size defaults to 1 GiB
+    handle->rocshmem_heap_size = 1ull << 30;
   }
 }
 #endif
@@ -349,12 +321,12 @@ hipdecompResult_t hipdecompFinalize(hipdecompHandle_t handle) {
     for (auto& stream : handle->streams) {
       CHECK_HIP(hipStreamDestroy(stream));
     }
-#ifdef ENABLE_NVSHMEM
-    if (handle->nvshmem_initialized) {
-      nvshmem_finalize();
-      handle->nvshmem_initialized = false;
-      handle->nvshmem_allocations.clear();
-      handle->nvshmem_allocation_size = 0;
+#ifdef ENABLE_ROCSHMEM
+    if (handle->rocshmem_initialized) {
+      rocshmem_finalize();
+      handle->rocshmem_initialized = false;
+      handle->rocshmem_allocations.clear();
+      handle->rocshmem_allocation_size = 0;
     }
 #endif
     CHECK_MPI(MPI_Comm_free(&handle->mpi_local_comm));
@@ -397,12 +369,12 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
     bool autotune_transpose_backend = false;
     bool autotune_halo_backend = false;
     bool autotune_disable_nccl_backends = false;
-    bool autotune_disable_nvshmem_backends = false;
+    bool autotune_disable_rocshmem_backends = false;
     if (options) {
       autotune_transpose_backend = options->autotune_transpose_backend;
       autotune_halo_backend = options->autotune_halo_backend;
       autotune_disable_nccl_backends = options->disable_nccl_backends;
-      autotune_disable_nvshmem_backends = options->disable_nvshmem_backends;
+      autotune_disable_rocshmem_backends = options->disable_rocshmem_backends;
     }
 
     checkConfig(handle, config, autotune_transpose_backend, autotune_halo_backend);
@@ -503,15 +475,15 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
       grid_desc->nccl_local_comm = handle->nccl_local_comm;
     }
 
-    // Initialize NVSHMEM if needed
-    if (transposeBackendRequiresNvshmem(comm_backend) || haloBackendRequiresNvshmem(halo_comm_backend) ||
-        ((autotune_transpose_backend || autotune_halo_backend) && !autotune_disable_nvshmem_backends)) {
-#ifdef ENABLE_NVSHMEM
-      if (!handle->nvshmem_initialized) {
-        inspectNvshmemEnvVars(handle);
-        initNvshmemFromMPIComm(handle->mpi_comm);
-        handle->nvshmem_initialized = true;
-        handle->nvshmem_allocation_size = 0;
+    // Initialize rocSHMEM if needed
+    if (transposeBackendRequiresRocshmem(comm_backend) || haloBackendRequiresRocshmem(halo_comm_backend) ||
+        ((autotune_transpose_backend || autotune_halo_backend) && !autotune_disable_rocshmem_backends)) {
+#ifdef ENABLE_ROCSHMEM
+      if (!handle->rocshmem_initialized) {
+        inspectRocshmemEnvVars(handle);
+        initRocshmemFromMPIComm(handle->mpi_comm);
+        handle->rocshmem_initialized = true;
+        handle->rocshmem_allocation_size = 0;
       }
 #endif
     }
@@ -530,8 +502,8 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
     for (auto& event : grid_desc->events) {
       CHECK_HIP(hipEventCreateWithFlags(&event, hipEventDisableTiming));
     }
-#ifdef ENABLE_NVSHMEM
-    CHECK_HIP(hipEventCreateWithFlags(&grid_desc->nvshmem_sync_event, hipEventDisableTiming));
+#ifdef ENABLE_ROCSHMEM
+    CHECK_HIP(hipEventCreateWithFlags(&grid_desc->rocshmem_sync_event, hipEventDisableTiming));
 #endif
 
     // Disable decompositions with empty pencils
@@ -576,20 +548,20 @@ hipdecompResult_t hipdecompGridDescCreate(hipdecompHandle_t handle, hipdecompGri
     MPI_Comm col_comm;
     CHECK_MPI(MPI_Comm_split(handle->mpi_comm, color_col, handle->rank, &col_comm));
     setCommInfo(handle, grid_desc, col_comm, HIPDECOMP_COMM_COL);
-#ifdef ENABLE_NVSHMEM
-    if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend) ||
-        haloBackendRequiresNvshmem(grid_desc->config.halo_comm_backend)) {
-      nvshmem_team_config_t tmp;
-      nvshmem_team_split_2d(NVSHMEM_TEAM_WORLD, grid_desc->config.pdims[1], &tmp, 0,
-                            &grid_desc->row_comm_info.nvshmem_team, &tmp, 0, &grid_desc->col_comm_info.nvshmem_team);
-      handle->n_grid_descs_using_nvshmem++;
+#ifdef ENABLE_ROCSHMEM
+    if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend) ||
+        haloBackendRequiresRocshmem(grid_desc->config.halo_comm_backend)) {
+      rocshmem_team_config_t tmp;
+      rocshmem_team_split_2d(ROCSHMEM_TEAM_WORLD, grid_desc->config.pdims[1], &tmp, 0,
+                             &grid_desc->row_comm_info.rocshmem_team, &tmp, 0, &grid_desc->col_comm_info.rocshmem_team);
+      handle->n_grid_descs_using_rocshmem++;
     } else {
-      // Finalize nvshmem to reclaim symmetric heap memory if not used
-      if (handle->nvshmem_initialized && handle->n_grid_descs_using_nvshmem == 0) {
-        nvshmem_finalize();
-        handle->nvshmem_initialized = false;
-        handle->nvshmem_allocations.clear();
-        handle->nvshmem_allocation_size = 0;
+      // Finalize rocshmem to reclaim symmetric heap memory if not used
+      if (handle->rocshmem_initialized && handle->n_grid_descs_using_rocshmem == 0) {
+        rocshmem_finalize();
+        handle->rocshmem_initialized = false;
+        handle->rocshmem_allocations.clear();
+        handle->rocshmem_allocation_size = 0;
       }
     }
 #endif
@@ -663,8 +635,8 @@ hipdecompResult_t hipdecompGridDescDestroy(hipdecompHandle_t handle, hipdecompGr
       if (e) { CHECK_HIP(hipEventDestroy(e)); }
     }
 
-#ifdef ENABLE_NVSHMEM
-    if (grid_desc->nvshmem_sync_event) { CHECK_HIP(hipEventDestroy(grid_desc->nvshmem_sync_event)); }
+#ifdef ENABLE_ROCSHMEM
+    if (grid_desc->rocshmem_sync_event) { CHECK_HIP(hipEventDestroy(grid_desc->rocshmem_sync_event)); }
 #endif
 
     if (handle->performance_report_enable) {
@@ -709,23 +681,23 @@ hipdecompResult_t hipdecompGridDescDestroy(hipdecompHandle_t handle, hipdecompGr
       if (handle->nccl_local_comm && handle->nccl_local_comm.use_count() == 1) { handle->nccl_local_comm.reset(); }
     }
 
-#ifdef ENABLE_NVSHMEM
-    if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend) ||
-        haloBackendRequiresNvshmem(grid_desc->config.halo_comm_backend)) {
-      if (grid_desc->row_comm_info.nvshmem_team != NVSHMEM_TEAM_INVALID) {
-        nvshmem_team_destroy(grid_desc->row_comm_info.nvshmem_team);
+#ifdef ENABLE_ROCSHMEM
+    if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend) ||
+        haloBackendRequiresRocshmem(grid_desc->config.halo_comm_backend)) {
+      if (grid_desc->row_comm_info.rocshmem_team != ROCSHMEM_TEAM_INVALID) {
+        rocshmem_team_destroy(grid_desc->row_comm_info.rocshmem_team);
       }
-      if (grid_desc->col_comm_info.nvshmem_team != NVSHMEM_TEAM_INVALID) {
-        nvshmem_team_destroy(grid_desc->col_comm_info.nvshmem_team);
+      if (grid_desc->col_comm_info.rocshmem_team != ROCSHMEM_TEAM_INVALID) {
+        rocshmem_team_destroy(grid_desc->col_comm_info.rocshmem_team);
       }
-      handle->n_grid_descs_using_nvshmem--;
+      handle->n_grid_descs_using_rocshmem--;
 
-      // Finalize nvshmem to reclaim symmetric heap memory if not used
-      if (handle->nvshmem_initialized && handle->n_grid_descs_using_nvshmem == 0) {
-        nvshmem_finalize();
-        handle->nvshmem_initialized = false;
-        handle->nvshmem_allocations.clear();
-        handle->nvshmem_allocation_size = 0;
+      // Finalize rocshmem to reclaim symmetric heap memory if not used
+      if (handle->rocshmem_initialized && handle->n_grid_descs_using_rocshmem == 0) {
+        rocshmem_finalize();
+        handle->rocshmem_initialized = false;
+        handle->rocshmem_allocations.clear();
+        handle->rocshmem_allocation_size = 0;
       }
     }
 #endif
@@ -785,7 +757,7 @@ hipdecompResult_t hipdecompGridDescAutotuneOptionsSetDefaults(hipdecompGridDescA
     options->dtype = HIPDECOMP_DOUBLE;
     options->allow_uneven_decompositions = true;
     options->disable_nccl_backends = false;
-    options->disable_nvshmem_backends = false;
+    options->disable_rocshmem_backends = false;
     options->skip_threshold = 0.0;
 
     // Transpose-specific options
@@ -961,29 +933,29 @@ hipdecompResult_t hipdecompMalloc(hipdecompHandle_t handle, hipdecompGridDesc_t 
     checkHandle(handle);
     checkGridDesc(grid_desc);
 
-    if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend) ||
-        haloBackendRequiresNvshmem(grid_desc->config.halo_comm_backend)) {
-#ifdef ENABLE_NVSHMEM
-      // NVSHMEM requires allocations to be the same size for all ranks. Find maximum.
+    if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend) ||
+        haloBackendRequiresRocshmem(grid_desc->config.halo_comm_backend)) {
+#ifdef ENABLE_ROCSHMEM
+      // rocSHMEM requires allocations to be the same size for all ranks. Find maximum.
       CHECK_MPI(MPI_Allreduce(MPI_IN_PLACE, &buffer_size_bytes, 1, MPI_LONG_LONG_INT, MPI_MAX, handle->mpi_comm));
 
-      size_t nvshmem_free_size = handle->nvshmem_symmetric_size - handle->nvshmem_allocation_size;
-      if (!handle->nvshmem_vmm && handle->rank == 0 && buffer_size_bytes > nvshmem_free_size) {
+      size_t rocshmem_free_size = handle->rocshmem_heap_size - handle->rocshmem_allocation_size;
+      if (handle->rank == 0 && buffer_size_bytes > rocshmem_free_size) {
         fprintf(stderr,
-                "HIPDECOMP:WARN: Attempting an NVSHMEM allocation of %lld bytes but *approximately* "
+                "HIPDECOMP:WARN: Attempting a rocSHMEM allocation of %zu bytes but *approximately* "
                 "%zu free bytes of %zu total bytes of symmetric heap space available. If the allocation fails, "
-                "set NVSHMEM_SYMMETRIC_SIZE >= %zu and try again.\n",
-                buffer_size_bytes, nvshmem_free_size, handle->nvshmem_symmetric_size,
-                handle->nvshmem_symmetric_size + (buffer_size_bytes - nvshmem_free_size));
+                "set ROCSHMEM_HEAP_SIZE >= %zu and try again.\n",
+                buffer_size_bytes, rocshmem_free_size, handle->rocshmem_heap_size,
+                handle->rocshmem_heap_size + (buffer_size_bytes - rocshmem_free_size));
       }
 
-      *buffer = nvshmem_malloc(buffer_size_bytes);
-      if (buffer_size_bytes != 0 && *buffer == nullptr) { THROW_NVSHMEM_ERROR("nvshmem_malloc failed"); }
-      // Record NVSHMEM allocation details
-      handle->nvshmem_allocations[*buffer] = buffer_size_bytes;
-      handle->nvshmem_allocation_size += buffer_size_bytes;
+      *buffer = rocshmem_malloc(buffer_size_bytes);
+      if (buffer_size_bytes != 0 && *buffer == nullptr) { THROW_ROCSHMEM_ERROR("rocshmem_malloc failed"); }
+      // Record rocSHMEM allocation details
+      handle->rocshmem_allocations[*buffer] = buffer_size_bytes;
+      handle->rocshmem_allocation_size += buffer_size_bytes;
 #else
-      THROW_NOT_SUPPORTED("build does not support NVSHMEM communication backends.");
+      THROW_NOT_SUPPORTED("build does not support rocSHMEM communication backends.");
 #endif
     } else {
       if (handle->hip_cumem_enable) {
@@ -1035,19 +1007,19 @@ hipdecompResult_t hipdecompFree(hipdecompHandle_t handle, hipdecompGridDesc_t gr
     }
 #endif
 
-    if (transposeBackendRequiresNvshmem(grid_desc->config.transpose_comm_backend) ||
-        haloBackendRequiresNvshmem(grid_desc->config.halo_comm_backend)) {
-#ifdef ENABLE_NVSHMEM
+    if (transposeBackendRequiresRocshmem(grid_desc->config.transpose_comm_backend) ||
+        haloBackendRequiresRocshmem(grid_desc->config.halo_comm_backend)) {
+#ifdef ENABLE_ROCSHMEM
       if (buffer) {
-        nvshmem_free(buffer);
+        rocshmem_free(buffer);
 
-        // Record NVSHMEM deallocation details
-        size_t buffer_size_bytes = handle->nvshmem_allocations[buffer];
-        handle->nvshmem_allocation_size -= buffer_size_bytes;
-        handle->nvshmem_allocations.erase(buffer);
+        // Record rocSHMEM deallocation details
+        size_t buffer_size_bytes = handle->rocshmem_allocations[buffer];
+        handle->rocshmem_allocation_size -= buffer_size_bytes;
+        handle->rocshmem_allocations.erase(buffer);
       }
 #else
-      THROW_NOT_SUPPORTED("build does not support NVSHMEM communication backends.");
+      THROW_NOT_SUPPORTED("build does not support rocSHMEM communication backends.");
 #endif
 
     } else {
@@ -1070,8 +1042,8 @@ const char* hipdecompTransposeCommBackendToString(hipdecompTransposeCommBackend_
   case HIPDECOMP_TRANSPOSE_COMM_MPI_P2P: return "MPI_P2P";
   case HIPDECOMP_TRANSPOSE_COMM_MPI_P2P_PL: return "MPI_P2P (pipelined)";
   case HIPDECOMP_TRANSPOSE_COMM_MPI_A2A: return "MPI_A2A";
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM: return "NVSHMEM";
-  case HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL: return "NVSHMEM (pipelined)";
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM: return "ROCSHMEM";
+  case HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL: return "ROCSHMEM (pipelined)";
   default: return "ERROR";
   }
 }
@@ -1081,8 +1053,8 @@ const char* hipdecompHaloCommBackendToString(hipdecompHaloCommBackend_t comm_bac
   case HIPDECOMP_HALO_COMM_NCCL: return "NCCL";
   case HIPDECOMP_HALO_COMM_MPI: return "MPI";
   case HIPDECOMP_HALO_COMM_MPI_BLOCKING: return "MPI (blocking)";
-  case HIPDECOMP_HALO_COMM_NVSHMEM: return "NVSHMEM";
-  case HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING: return "NVSHMEM (blocking)";
+  case HIPDECOMP_HALO_COMM_ROCSHMEM: return "ROCSHMEM";
+  case HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING: return "ROCSHMEM (blocking)";
   default: return "ERROR";
   }
 }

@@ -72,7 +72,7 @@ def setup_env(config, args):
     os.environ[var] = f"{val}"
     print(f"Set {var} = {val}")
 
-  # Dynamically setting NVSHMEM_SYMMETRIC_SIZE based on expected workspace size
+  # Dynamically setting ROCSHMEM_HEAP_SIZE based on expected workspace size
   # for input grid dimensions (with 5% margin)
   symmetric_size = 0
   wordsize = 8 if "_f" in config["executable_prefix"] else 16
@@ -82,8 +82,8 @@ def setup_env(config, args):
     symmetric_size = 2* ((args.gx // 2 + 1) * args.gy * args.gz * wordsize) // args.ngpu
 
   symmetric_size = int(1.05 * symmetric_size)
-  os.environ["NVSHMEM_SYMMETRIC_SIZE"] = f"{symmetric_size}"
-  print(f"Set NVSHMEM_SYMMETRIC_SIZE = {symmetric_size}")
+  os.environ["ROCSHMEM_HEAP_SIZE"] = f"{symmetric_size}"
+  print(f"Set ROCSHMEM_HEAP_SIZE = {symmetric_size}")
 
 def add_csv_entry(csvfile, cmd, stdout_str):
   if not os.path.exists(csvfile):
