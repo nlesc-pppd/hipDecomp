@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <numeric>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include <hip/hip_runtime.h>
@@ -239,7 +240,7 @@ void autotuneTransposeBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid
                    "for some MPI implementations. See documentation for more details and suggested workarounds.\n");
           }
           work = work_rocshmem;
-          hipGetLastError(); // Reset HIP error state
+          std::ignore = hipGetLastError(); // Reset HIP error state
         } else {
           CHECK_HIP(hipFree(work));
           auto tmp = grid_desc->config.transpose_comm_backend;
@@ -648,7 +649,7 @@ void autotuneHaloBackend(hipdecompHandle_t handle, hipdecompGridDesc_t grid_desc
                    "for some MPI implementations. See documentation for more details and suggested workarounds.\n");
           }
           work = work_rocshmem;
-          hipGetLastError(); // Reset HIP error state
+          std::ignore = hipGetLastError(); // Reset HIP error state
         } else {
           CHECK_HIP(hipFree(work));
           auto tmp = grid_desc->config.halo_comm_backend;

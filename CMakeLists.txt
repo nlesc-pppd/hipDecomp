@@ -141,9 +141,7 @@ endif()
 
 if (HIPDECOMP_ENABLE_ROCSHMEM)
   target_compile_definitions(hipdecomp PRIVATE ENABLE_ROCSHMEM)
-  # rocSHMEM is a static library containing device code, which requires relocatable device code linking
   target_link_libraries(hipdecomp PRIVATE roc::rocshmem)
-  # target_link_options(hipdecomp PRIVATE -fgpu-rdc --hip-link)
 endif()
 
 set_target_properties(hipdecomp PROPERTIES PUBLIC_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/include/hipdecomp.h)
