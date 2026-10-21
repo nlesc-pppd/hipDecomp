@@ -40,7 +40,7 @@ jobs:
       - name: Setup PATH
         run: |
           echo /opt/openmpi/bin >> $GITHUB_PATH
-          echo /opt/rocm-${{ env.rocm-version }}/bin >> $GITHUB_PATH
+          echo /opt/rocm/bin >> $GITHUB_PATH
 
       - name: Install ROCm
         if: steps.cache-rocm.outputs.cache-hit != 'true'
