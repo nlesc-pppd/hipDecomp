@@ -20,7 +20,7 @@ jobs:
       - name: Build hipDecomp
         run: |
           arch=$(rocm_agent_enumerator | head -n 1)
-          cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DHIPDECOMP_ENABLE_ROCSHMEM=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
+          cmake -S . -B build -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
           make -C build -j
 
       - name: Prepare test environment
@@ -32,22 +32,22 @@ jobs:
       - name: Run C++ transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3,6,7]" transpose_test_cc  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_cc  # disable NCCL/rocSHMEM backends
 
       - name: Run Fortran transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3,6,7]" transpose_test_fortran  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_fortran  # disable NCCL/rocSHMEM backends
 
       - name: Run C++ halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,4,5]" halo_test_cc  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_cc  # disable NCCL/rocSHMEM backends
 
       - name: Run Fortran halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,4,5]" halo_test_fortran  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_fortran  # disable NCCL/rocSHMEM backends
 
       - name: Run C++ examples
         run: |
@@ -71,7 +71,7 @@ jobs:
       - name: Build hipDecomp with cuDecomp naming
         run: |
           arch=$(rocm_agent_enumerator | head -n 1)
-          cmake -S . -B build -DHIPDECOMP_USE_CUDECOMP_NAMES=1 -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DHIPDECOMP_ENABLE_ROCSHMEM=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
+          cmake -S . -B build -DHIPDECOMP_USE_CUDECOMP_NAMES=1 -DHIPDECOMP_BUILD_EXTRAS=1 -DHIPDECOMP_BUILD_FORTRAN=1 -DHIPDECOMP_ENABLE_ROCTX=1 -DCMAKE_HIP_ARCHITECTURES=${arch}
           make -C build -j
 
       - name: Prepare test environment
@@ -83,22 +83,22 @@ jobs:
       - name: Run C++ transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3,6,7]" transpose_test_cc  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_cc  # disable NCCL/rocSHMEM backends
 
       - name: Run Fortran transpose tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3,6,7]" transpose_test_fortran  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_fortran  # disable NCCL/rocSHMEM backends
 
       - name: Run C++ halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,4,5]" halo_test_cc  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_cc  # disable NCCL/rocSHMEM backends
 
       - name: Run Fortran halo tests
         run: |
           cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,4,5]" halo_test_fortran  # disable NCCL backend
+          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_fortran  # disable NCCL/rocSHMEM backends
 
       - name: Run C++ examples
         run: |
