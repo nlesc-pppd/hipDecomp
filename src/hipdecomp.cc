@@ -26,6 +26,7 @@
 #include <vector>
 
 #include <hip/hip_runtime.h>
+#include <hsa/hsa_ext_amd.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
 #ifdef ENABLE_ROCSHMEM
@@ -297,8 +298,29 @@ hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle_in, MPI_Comm mpi_comm)
     // Gather extra MPI info from all communicator ranks
     gatherGlobalMPIInfo(handle);
 
-    // ToDo: query infinity fabric connected peers
-    handle->device_p2p_ce_count = 2; // Assume 2 P2P CE otherwise (shared D2H/H2D CE)
+    // Get number of xGMI-connected peers
+    int num_xgmi_peers = 0;
+    int device_count;
+    int active_device;
+    CHECK_HIP_EXIT(hipGetDeviceCount(&device_count));
+    CHECK_HIP_EXIT(hipGetDevice(&active_device));
+    for (int peer = 0; peer < device_count; peer++) {
+      if (peer == active_device) continue;
+      int can_access;
+      uint32_t link_type, hop_count;
+      CHECK_HIP_EXIT(hipDeviceCanAccessPeer(&can_access, active_device, peer));
+      CHECK_HIP_EXIT(hipExtGetLinkTypeAndHopCount(active_device, peer, &link_type, &hop_count));
+      if (can_access && (link_type == HSA_AMD_LINK_INFO_TYPE_XGMI)) {
+        num_xgmi_peers++;
+      }
+    }
+
+    // Set P2P CE count
+    if (num_xgmi_peers > 0) {
+      handle->device_p2p_ce_count = num_xgmi_peers; // Assume each XGMI peer has a P2P CE available
+    } else {
+      handle->device_p2p_ce_count = 2; // Assume 2 P2P CE otherwise (shared D2H/H2D CE)
+    }
 
     handle->initialized = true;
     hipdecomp_initialized = true;
