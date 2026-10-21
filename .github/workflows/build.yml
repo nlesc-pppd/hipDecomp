@@ -9,6 +9,7 @@ on:
 
 env:
   rocm-version: "10.1"
+  rocm-version-full: "10.1.0"
   openmpi-version: "5.0.11"
   target-gpu: "gfx90a"
 
@@ -67,7 +68,7 @@ jobs:
       - name: Install hipfort
         if: steps.cache-rocm.outputs.cache-hit != 'true'
         run: |
-          git clone https://github.com/ROCm/hipfort -b rocm-${{ env.rocm-version }}
+          git clone https://github.com/ROCm/hipfort -b rocm-${{ env.rocm-version-full }}
           cd hipfort
           cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DCMAKE_INSTALL_PREFIX=/opt/rocm-${{ env.rocm-version }}
           make -C build -j
