@@ -23,24 +23,46 @@
 
 namespace hipdecomp {
 
-#ifdef ENABLE_NVSHMEM
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<float>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+#ifdef ENABLE_ROCSHMEM
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<float>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<double>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<double>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<float>>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<float>>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 
-void hipdecomp_nvshmem_alltoallv(const hipdecompNvshmemA2AParams<std::complex<double>>& params, hipStream_t stream) {
-  hipdecomp_nvshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+void hipdecomp_rocshmem_alltoallv(const hipdecompRocshmemA2AParams<std::complex<double>>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_alltoallv_k<<<1, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem_nbi_wg(const hipdecompRocshmemA2AParams<float>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_nbi_wg_k<<<params.ntransfers, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem_nbi_wg(const hipdecompRocshmemA2AParams<double>& params, hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_nbi_wg_k<<<params.ntransfers, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem_nbi_wg(const hipdecompRocshmemA2AParams<std::complex<float>>& params,
+                                      hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_nbi_wg_k<<<params.ntransfers, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
+  CHECK_HIP_LAUNCH();
+}
+
+void hipdecomp_rocshmem_putmem_nbi_wg(const hipdecompRocshmemA2AParams<std::complex<double>>& params,
+                                      hipStream_t stream) {
+  hipdecomp_rocshmem_putmem_nbi_wg_k<<<params.ntransfers, HIPDECOMP_HIP_NTHREADS, 0, stream>>>(params);
   CHECK_HIP_LAUNCH();
 }
 #endif

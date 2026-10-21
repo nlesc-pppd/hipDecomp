@@ -112,7 +112,7 @@ static void usage(const char* pname) {
           "\t\tAutotuner skip threshold setting. (default: 0.0) \n"
           "\t-b|--backend <INTEGER>\n"
           "\t\tCommunication backend to use. Choices: 0:AUTOTUNE, 1:MPI_P2P, 2:MPI_P2P_PL, 3:MPI_A2A, 4:NCCL, "
-          "5:NCCL_PL, 6:NVSHMEM, 7:NVSHMEM_PL. (default: 0) \n"
+          "5:NCCL_PL, 6:ROCSHMEM, 7:ROCSHMEM_PL. (default: 0) \n"
           "\t-o|--out-of-place\n"
           "\t\tFlag to test out of place operation. \n"
           "\t-m|--use-managed-memory\n"

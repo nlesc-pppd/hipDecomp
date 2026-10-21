@@ -25,6 +25,7 @@
 #define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
 #define hipdecompGridDesc cudecompGridDesc
 #define hipdecompPencilInfo cudecompPencilInfo
+#define disable_rocshmem_backends disable_nvshmem_backends
 
 #define hipdecompInit cudecompInit
 #define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
@@ -139,7 +140,7 @@ program main
   options%n_trials = 5
   options%dtype = HIPDECOMP_DOUBLE
   options%disable_nccl_backends = disable_nccl_backends
-  options%disable_nvshmem_backends = .false.
+  options%disable_rocshmem_backends = .false.
   options%skip_threshold = 0.0
 
   ! Process grid autotuning options

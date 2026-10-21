@@ -19,8 +19,9 @@
 #ifndef HIPDECOMP_KERNELS_CUH
 #define HIPDECOMP_KERNELS_CUH
 
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
+using namespace rocshmem;
 #endif
 
 #include "internal/hipdecomp_kernels.h"
@@ -31,10 +32,10 @@
 
 namespace hipdecomp {
 
-#ifdef ENABLE_NVSHMEM
+#ifdef ENABLE_ROCSHMEM
 template <typename T>
 __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
-    void hipdecomp_nvshmem_alltoallv_k(hipdecompNvshmemA2AParams<T> params) {
+    void hipdecomp_rocshmem_alltoallv_k(hipdecompRocshmemA2AParams<T> params) {
 
   const int tid = blockIdx.x * blockDim.x + threadIdx.x;
   if (tid >= params.ntransfers) return;
@@ -46,7 +47,25 @@ __launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
   size_t recv_offset = params.recv_offsets[tid];
   size_t send_count = params.send_counts[tid];
 
-  nvshmem_putmem_nbi(recv_buff + recv_offset, send_buff + send_offset, send_count * sizeof(T), peer_rank);
+  rocshmem_putmem_nbi(recv_buff + recv_offset, send_buff + send_offset, send_count * sizeof(T), peer_rank);
+}
+
+// One workgroup per transfer, so large transfers are copied cooperatively by all threads in the workgroup
+template <typename T>
+__launch_bounds__(HIPDECOMP_HIP_NTHREADS) __global__
+    void hipdecomp_rocshmem_putmem_nbi_wg_k(hipdecompRocshmemA2AParams<T> params) {
+
+  const int bid = blockIdx.x;
+  if (bid >= params.ntransfers) return;
+
+  int peer_rank = params.peer_ranks[bid];
+  T* send_buff = params.send_buff;
+  T* recv_buff = params.recv_buff;
+  size_t send_offset = params.send_offsets[bid];
+  size_t recv_offset = params.recv_offsets[bid];
+  size_t send_count = params.send_counts[bid];
+
+  rocshmem_putmem_nbi_wg(recv_buff + recv_offset, send_buff + send_offset, send_count * sizeof(T), peer_rank);
 }
 #endif
 

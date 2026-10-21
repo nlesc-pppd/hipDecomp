@@ -33,9 +33,9 @@
 #include <hip/hip_runtime.h>
 #include <mpi.h>
 #include <rccl/rccl.h>
-#ifdef ENABLE_NVSHMEM
-#include <nvshmem.h>
-#include <nvshmemx.h>
+#ifdef ENABLE_ROCSHMEM
+#include <rocshmem/rocshmem.hpp>
+using namespace rocshmem;
 #endif
 
 #include "hipdecomp.h"
@@ -77,14 +77,13 @@ struct hipdecompHandle {
 
   bool initialized = false;
 
-  // Entries for NVSHMEM management and warning generation
-  bool nvshmem_initialized = false;                      // Flag to track NVSHMEM initialization
-  int n_grid_descs_using_nvshmem = 0;                    // Count of grid descriptors using NVSHMEM
-  bool nvshmem_mixed_buffer_warning_issued = false;      // Warn once if NVSHMEM buffer is used with MPI
-  size_t nvshmem_symmetric_size;                         // NVSHMEM symmetric size
-  bool nvshmem_vmm;                                      // Flag to track if NVSHMEM is using VMM allocations
-  std::unordered_map<void*, size_t> nvshmem_allocations; // Table to record NVSHMEM allocations
-  size_t nvshmem_allocation_size = 0;                    // Total of NVSHMEM allocations
+  // Entries for rocSHMEM management and warning generation
+  bool rocshmem_initialized = false;                      // Flag to track rocSHMEM initialization
+  int n_grid_descs_using_rocshmem = 0;                    // Count of grid descriptors using rocSHMEM
+  bool rocshmem_mixed_buffer_warning_issued = false;      // Warn once if rocSHMEM buffer is used with MPI
+  size_t rocshmem_heap_size;                              // rocSHMEM symmetric heap size
+  std::unordered_map<void*, size_t> rocshmem_allocations; // Table to record rocSHMEM allocations
+  size_t rocshmem_allocation_size = 0;                    // Total of rocSHMEM allocations
 
   // Multi-node NVLINK (MNNVL)
   bool hip_cumem_enable = false; // Flag to control whether cuMem* APIs are used for hipdecompMalloc/Free
@@ -118,8 +117,8 @@ struct hipdecompCommInfo {
   int32_t ngroups = 0;   // number of p2p groups (i.e. grouping of ranks with fast interconnect) in communicator
   int32_t npergroup = 0; // number of ranks per p2p group
 
-#ifdef ENABLE_NVSHMEM
-  nvshmem_team_t nvshmem_team = NVSHMEM_TEAM_INVALID;
+#ifdef ENABLE_ROCSHMEM
+  rocshmem_team_t rocshmem_team = ROCSHMEM_TEAM_INVALID;
 #endif
 };
 
@@ -169,8 +168,8 @@ struct hipdecompGridDesc {
   hipdecompCommInfo row_comm_info; // row communicator information
   hipdecompCommInfo col_comm_info; // column communicator information
 
-  std::vector<hipEvent_t> events{nullptr}; // HIP events used for scheduling
-  hipEvent_t nvshmem_sync_event = nullptr; // NVSHMEM event used for synchronization
+  std::vector<hipEvent_t> events{nullptr};  // HIP events used for scheduling
+  hipEvent_t rocshmem_sync_event = nullptr; // rocSHMEM event used for synchronization
 
   hipdecomp::graphCache graph_cache; // HIP graph cache
 
@@ -280,12 +279,12 @@ static inline bool haloBackendRequiresNccl(hipdecompHaloCommBackend_t comm_backe
   return (comm_backend == HIPDECOMP_HALO_COMM_NCCL);
 }
 
-static inline bool transposeBackendRequiresNvshmem(hipdecompTransposeCommBackend_t comm_backend) {
-  return (comm_backend == HIPDECOMP_TRANSPOSE_COMM_NVSHMEM || comm_backend == HIPDECOMP_TRANSPOSE_COMM_NVSHMEM_PL);
+static inline bool transposeBackendRequiresRocshmem(hipdecompTransposeCommBackend_t comm_backend) {
+  return (comm_backend == HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM || comm_backend == HIPDECOMP_TRANSPOSE_COMM_ROCSHMEM_PL);
 }
 
-static inline bool haloBackendRequiresNvshmem(hipdecompHaloCommBackend_t comm_backend) {
-  return (comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM || comm_backend == HIPDECOMP_HALO_COMM_NVSHMEM_BLOCKING);
+static inline bool haloBackendRequiresRocshmem(hipdecompHaloCommBackend_t comm_backend) {
+  return (comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM || comm_backend == HIPDECOMP_HALO_COMM_ROCSHMEM_BLOCKING);
 }
 
 static inline bool isManagedPointer(void* ptr) {

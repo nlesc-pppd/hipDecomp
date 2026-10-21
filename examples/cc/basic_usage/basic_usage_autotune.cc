@@ -41,6 +41,7 @@
 #define hipdecompGridDescConfig_t cudecompGridDescConfig_t
 #define hipdecompGridDesc_t cudecompGridDesc_t
 #define hipdecompGridDescAutotuneOptions_t cudecompGridDescAutotuneOptions_t
+#define disable_rocshmem_backends disable_nvshmem_backends
 
 #define hipdecompInit cudecompInit
 #define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults
@@ -170,7 +171,7 @@ int main(int argc, char** argv) {
   options.n_trials = 5;
   options.dtype = HIPDECOMP_DOUBLE;
   options.disable_nccl_backends = disable_nccl_backends;
-  options.disable_nvshmem_backends = false;
+  options.disable_rocshmem_backends = false;
   options.skip_threshold = 0.0;
 
   // Process grid autotuning options
