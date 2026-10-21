@@ -310,14 +310,12 @@ hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle_in, MPI_Comm mpi_comm)
       uint32_t link_type, hop_count;
       CHECK_HIP_EXIT(hipDeviceCanAccessPeer(&can_access, active_device, peer));
       CHECK_HIP_EXIT(hipExtGetLinkTypeAndHopCount(active_device, peer, &link_type, &hop_count));
-      if (can_access && (link_type == HSA_AMD_LINK_INFO_TYPE_XGMI)) {
-        num_xgmi_peers++;
-      }
+      if (can_access && (link_type == HSA_AMD_LINK_INFO_TYPE_XGMI)) { num_xgmi_peers++; }
     }
 
     // Set P2P CE count
     if (num_xgmi_peers > 0) {
-      handle->device_p2p_ce_count = num_xgmi_peers; // Assume each XGMI peer has a P2P CE available
+      handle->device_p2p_ce_count = num_xgmi_peers; // Assume each xGMI peer has a P2P CE available
     } else {
       handle->device_p2p_ce_count = 2; // Assume 2 P2P CE otherwise (shared D2H/H2D CE)
     }
