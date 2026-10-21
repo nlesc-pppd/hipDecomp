@@ -63,7 +63,7 @@ jobs:
           Enabled: yes
           EOF
           sudo apt update
-          sudo apt install amdrocm-runtime-dev${{ env.rocm-version }} amdrocm-fft-dev${{ env.rocm-version }} amdrocm-rccl-dev${{ env.rocm-version }} amdrocm-rocshmem-dev${{ env.rocm-version }}
+          sudo apt install amdrocm-core-dev${{ env.rocm-version }}-${{ env.target-gpu }} amdrocm-fft-dev${{ env.rocm-version }} amdrocm-rccl-dev${{ env.rocm-version }} amdrocm-rocshmem-dev${{ env.rocm-version }}
 
       - name: Install hipfort
         if: steps.cache-rocm.outputs.cache-hit != 'true'
