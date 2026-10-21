@@ -297,6 +297,9 @@ hipdecompResult_t hipdecompInit(hipdecompHandle_t* handle_in, MPI_Comm mpi_comm)
     // Gather extra MPI info from all communicator ranks
     gatherGlobalMPIInfo(handle);
 
+    // ToDo: query infinity fabric connected peers
+    handle->device_p2p_ce_count = 2; // Assume 2 P2P CE otherwise (shared D2H/H2D CE)
+
     handle->initialized = true;
     hipdecomp_initialized = true;
 
