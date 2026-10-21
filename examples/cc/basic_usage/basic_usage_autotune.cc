@@ -41,6 +41,7 @@
 #define hipdecompGridDescConfig_t cudecompGridDescConfig_t
 #define hipdecompGridDesc_t cudecompGridDesc_t
 #define hipdecompGridDescAutotuneOptions_t cudecompGridDescAutotuneOptions_t
+#define disable_rocshmem_backends disable_nvshmem_backends
 
 #define hipdecompInit cudecompInit
 #define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults

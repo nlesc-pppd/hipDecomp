@@ -25,6 +25,7 @@
 #define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
 #define hipdecompGridDesc cudecompGridDesc
 #define hipdecompPencilInfo cudecompPencilInfo
+#define disable_rocshmem_backends disable_nvshmem_backends
 
 #define hipdecompInit cudecompInit
 #define hipdecompGridDescConfigSetDefaults cudecompGridDescConfigSetDefaults

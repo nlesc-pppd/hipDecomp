@@ -63,7 +63,7 @@
 #define hipdecompDataType_t cudecompDataType_t
 #define hipdecompGridDescAutotuneOptions cudecompGridDescAutotuneOptions
 #define hipdecompGridDescAutotuneOptions_t cudecompGridDescAutotuneOptions_t
-#define disable_rocshmem_backends disable_nvshmem_backends // field of cudecompGridDescAutotuneOptions_t
+#define disable_rocshmem_backends disable_nvshmem_backends
 #define hipdecompPencilInfo cudecompPencilInfo
 #define hipdecompPencilInfo_t cudecompPencilInfo_t
 #define hipdecompInit cudecompInit
