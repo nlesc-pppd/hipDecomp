@@ -25,7 +25,8 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            /opt/rocm
+            /opt/rocm/
+            /etc/alternatives/
           key: rocm-${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
@@ -70,7 +71,7 @@ jobs:
         run: |
           git clone https://github.com/ROCm/hipfort -b rocm-${{ env.rocm-version-full }}
           cd hipfort
-          cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DCMAKE_INSTALL_PREFIX=/opt/rocm
+          cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DHIPFORT_BUILD_NVPTX=0 -DCMAKE_INSTALL_PREFIX=/opt/rocm
           make -C build -j
           sudo make -C build install
 

@@ -82,23 +82,43 @@ jobs:
 
       - name: Run C++ transpose tests
         run: |
-          cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_cc  # disable NCCL/rocSHMEM backends
-
-      - name: Run Fortran transpose tests
-        run: |
-          cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2,3]" transpose_test_fortran  # disable NCCL/rocSHMEM backends
+          cd build/tests/cc
+          for type in R32 R64 C32 C64; do
+            for backend in 1 2 3; do
+              echo "Type: ${type}, backend: ${backend}"
+              mpirun -n 2 ./transpose_test_${type} --pr 1 --pc 2 --backend ${backend}
+            done
+          done
 
       - name: Run C++ halo tests
         run: |
-          cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_cc  # disable NCCL/rocSHMEM backends
+          cd build/tests/cc
+          for type in R32 R64 C32 C64; do
+            for backend in 1 2; do
+              echo "Type: ${type}, backend: ${backend}"
+              mpirun -n 2 ./halo_test_${type} --pr 1 --pc 2 --backend ${backend}
+            done
+          done
+
+      - name: Run Fortran transpose tests
+        run: |
+          cd build/tests/fortran
+          for type in R32 R64 C32 C64; do
+            for backend in 1 2 3; do
+              echo "Type: ${type}, backend: ${backend}"
+              mpirun -n 2 ./transpose_test_${type} --pr 1 --pc 2 --backend ${backend}
+            done
+          done
 
       - name: Run Fortran halo tests
         run: |
-          cd build/tests
-          python3 test_runner.py --ngpu 2 --exit_on_failure --launcher_cmd "mpirun -n 2" --config_overrides "backend:[1,2]" halo_test_fortran  # disable NCCL/rocSHMEM backends
+          cd build/tests/fortran
+          for type in R32 R64 C32 C64; do
+            for backend in 1 2; do
+              echo "Type: ${type}, backend: ${backend}"
+              mpirun -n 2 ./halo_test_${type} --pr 1 --pc 2 --backend ${backend}
+            done
+          done
 
       - name: Run C++ examples
         run: |

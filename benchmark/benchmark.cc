@@ -136,7 +136,15 @@ int main(int argc, char** argv) {
   MPI_Comm_split_type(MPI_COMM_WORLD, MPI_COMM_TYPE_SHARED, 0, MPI_INFO_NULL, &local_comm);
   int local_rank;
   MPI_Comm_rank(local_comm, &local_rank);
-  CHECK_HIP_EXIT(hipSetDevice(local_rank));
+
+  int device_count;
+  CHECK_HIP_EXIT(hipGetDeviceCount(&device_count));
+  CHECK_HIP_EXIT(hipSetDevice(local_rank % device_count));
+
+  // Cannot use NCCL if multiple ranks run on the same GPU
+  bool disable_nccl_backends = false;
+  if (local_rank >= device_count) disable_nccl_backends = true;
+  CHECK_MPI_EXIT(MPI_Allreduce(MPI_IN_PLACE, &disable_nccl_backends, 1, MPI_LOGICAL, MPI_LOR, MPI_COMM_WORLD));
 
   // Parse command-line arguments
   int gx = 256;
@@ -224,6 +232,7 @@ int main(int argc, char** argv) {
   hipdecompGridDescAutotuneOptions_t options;
   CHECK_HIPDECOMP_EXIT(hipdecompGridDescAutotuneOptionsSetDefaults(&options));
   options.dtype = get_hipdecomp_datatype(complex_t(0));
+  options.disable_nccl_backends = disable_nccl_backends;
   for (int i = 0; i < 4; ++i) {
     options.transpose_use_inplace_buffers[i] = !out_of_place;
   }
