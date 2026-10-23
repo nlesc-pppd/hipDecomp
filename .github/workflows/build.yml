@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            /opt/rocm
+            /opt/rocm/
           key: rocm-${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
@@ -83,6 +83,13 @@ jobs:
           CC=amdclang CXX=amdclang++ FC=amdflang ./configure --prefix=/opt/openmpi/ --with-rocm
           make -j
           sudo make install
+
+      - name: CI CHECK
+        run: |
+          ls -lhat /opt
+          ls /opt/rocm/
+          ls /opt/rocm/bin/
+          find /opt/rocm/ -name hipcc
 
       - name: Build hipDecomp
         run: |
