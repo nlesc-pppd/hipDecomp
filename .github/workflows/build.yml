@@ -26,6 +26,7 @@ jobs:
         with:
           path: |
             /opt/rocm/
+            /etc/alternatives/
           key: rocm-${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
