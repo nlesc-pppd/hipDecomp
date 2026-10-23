@@ -70,7 +70,7 @@ jobs:
         run: |
           git clone https://github.com/ROCm/hipfort -b rocm-${{ env.rocm-version-full }}
           cd hipfort
-          cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DCMAKE_INSTALL_PREFIX=/opt/rocm
+          cmake -S . -B build -DCMAKE_C_COMPILER=amdclang -DCMAKE_CXX_COMPILER=amdclang++ -DCMAKE_Fortran_COMPILER=amdflang -DHIPFORT_BUILD_NVPTX=0 -DCMAKE_INSTALL_PREFIX=/opt/rocm
           make -C build -j
           sudo make -C build install
 
@@ -83,13 +83,6 @@ jobs:
           CC=amdclang CXX=amdclang++ FC=amdflang ./configure --prefix=/opt/openmpi/ --with-rocm
           make -j
           sudo make install
-
-      - name: CI CHECK
-        run: |
-          ls -lhat /opt
-          ls /opt/rocm/
-          ls /opt/rocm/bin/
-          find /opt/rocm/ -name hipcc
 
       - name: Build hipDecomp
         run: |
