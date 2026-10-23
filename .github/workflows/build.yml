@@ -71,9 +71,6 @@ jobs:
             sudo ln -s $target $link
           done
 
-      - name: CHECK
-        run: ls -lhat /opt/rocm/
-
       - name: Install hipfort
         if: steps.cache-rocm.outputs.cache-hit != 'true'
         run: |
