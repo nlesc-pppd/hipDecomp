@@ -1,4 +1,4 @@
-find_package(hipfort REQUIRED COMPONENTS hipfft)
+find_package(hipfft REQUIRED)
 
 add_executable(tg)
 

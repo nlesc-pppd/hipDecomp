@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            /opt/rocm-${{ env.rocm-version }}/
+            /opt/rocm
           key: rocm-${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
