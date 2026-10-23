@@ -115,10 +115,6 @@ target_link_libraries(hipdecomp PRIVATE rccl)
 if (HIPDECOMP_ENABLE_ROCTX)
   target_link_libraries(hipdecomp PRIVATE rocprofiler-sdk-roctx)
 endif()
-if (CRAY_CC_BIN)
-  # In Cray environments, add link to GTL lib for GPU-aware MPI support
-  target_link_libraries(hipdecomp PRIVATE ${CRAY_MPI_GTL_HIP_LIBRARY})
-endif()
 
 # Test for std::filesystem linking
 try_compile(

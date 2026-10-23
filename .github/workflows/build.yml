@@ -26,7 +26,6 @@ jobs:
         with:
           path: |
             /opt/rocm/
-            /etc/alternatives/
           key: rocm-${{ runner.os }}-${{ env.rocm-version }}
 
       - name: Cache OpenMPI installation
@@ -65,6 +64,12 @@ jobs:
           EOF
           sudo apt update
           sudo apt install amdrocm-core-dev${{ env.rocm-version }}-${{ env.target-gpu }} amdrocm-fft-dev${{ env.rocm-version }} amdrocm-rccl-dev${{ env.rocm-version }} amdrocm-rocshmem-dev${{ env.rocm-version }}
+          # Avoid symlinks through /etc/alternatives
+          for link in $(find /opt/rocm/ -maxdepth 1 -type l); do
+            target=$(readlink -f $link)
+            sudo unlink $link
+            sudo ln -s $target $link
+          done
 
       - name: Install hipfort
         if: steps.cache-rocm.outputs.cache-hit != 'true'
